@@ -43,7 +43,7 @@ function initCB(instance) {
 
         $('#dateform').submit(function() {
             var theDate = $('#dateinput').val();
-            loadWeatherForDate(theDate);
+            loadWeatherForDate(theDate, ge);
             return false;
         });
     });
@@ -53,8 +53,16 @@ function failureCB(errorCode) {
     alert("Error!: " + errorCode);
 }
 
-function loadWeatherForDate(theDate) {
-    // TODO
+function loadWeatherForDate(theDate, ge) {
+    var href = location.href + 'samples.kml?date=' + theDate;
+    google.earth.fetchKml(ge, href, function(kmlObject) {
+        if (kmlObject) {
+            $('#date').html(theDate);
+            ge.getFeatures().appendChild(kmlObject);
+        } else {
+            alert("Error fetching historical data");
+        }
+    });
 }
 
 google.setOnLoadCallback(init);
