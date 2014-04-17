@@ -30,6 +30,7 @@ function initCB(instance) {
                     var lookAt = ge.createLookAt('');
                     lookAt.setLatitude(latlng.lat());
                     lookAt.setLongitude(latlng.lng());
+                    lookAt.setTilt(60);  // degrees
                     lookAt.setRange(100 * 1000.0);  // km
                     ge.getView().setAbstractView(lookAt);
                 } else {
