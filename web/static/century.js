@@ -53,14 +53,22 @@ function failureCB(errorCode) {
     alert("Error!: " + errorCode);
 }
 
+var previousStations = null;
+
 function loadWeatherForDate(theDate, ge) {
     var href = location.href + 'samples.kml?date=' + theDate;
     google.earth.fetchKml(ge, href, function(kmlObject) {
         if (kmlObject) {
             $('#date').html(theDate);
+            var features = ge.getFeatures();
+            if (previousStations) features.removeChild(previousStations);
             ge.getFeatures().appendChild(kmlObject);
+            previousStations = kmlObject;
         } else {
-            alert("Error fetching historical data");
+            // Defer alert to prevent deadlock in some browsers.
+            setTimeout(function() {
+                alert("Error fetching historical data");
+            }, 0);
         }
     });
 }
