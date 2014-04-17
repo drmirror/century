@@ -1,4 +1,3 @@
-var ge;
 google.load("earth", "1", {"other_params": "sensor=false"});
 
 function init() {
@@ -6,22 +5,42 @@ function init() {
 }
 
 function initCB(instance) {
-    ge = instance;
+    /*
+     * Geocoding.
+     */
+    var geocoder = new google.maps.Geocoder();
+
+    /*
+     * Google Earth.
+     */
+    var ge = instance;
     ge.getWindow().setVisibility(true);
 
-    var link = ge.createLink('');
-    var href = location.href + '/kml.kml';
-    link.setHref(href);
-
-    var networkLink = ge.createNetworkLink('');
-    // Sets the link, refreshVisibility, and flyToView.
-    networkLink.set(link, true, true);
-
-    ge.getFeatures().appendChild(networkLink);
-
-    /* DOM-dependent stuff. */
+    /*
+     * User interaction, with jQuery.
+     */
     $(function() {
-        $('#dateform').submit(function(form) {
+        $('#addressform').submit(function() {
+            var address = $('#address').val();
+            geocoder.geocode({address: address}, function(results, status) {
+                if (status == google.maps.GeocoderStatus.OK) {
+                    var latlng = results[0].geometry.location;
+                    $('#lat').html(latlng.lat());
+                    $('#lng').html(latlng.lng());
+                    var lookAt = ge.createLookAt('');
+                    lookAt.setLatitude(latlng.lat());
+                    lookAt.setLongitude(latlng.lng());
+                    lookAt.setRange(100 * 1000.0);  // km
+                    ge.getView().setAbstractView(lookAt);
+                } else {
+                    alert('Geocode failed: ' + status);
+                }
+            });
+
+            return false;
+        });
+
+        $('#dateform').submit(function() {
             var theDate = $('#dateinput').val();
             loadWeatherForDate(theDate);
             return false;
