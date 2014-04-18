@@ -1,26 +1,50 @@
-import random
+import datetime
+import time
+
 from fastkml import kml, Document
 from fastkml.geometry import Point
 
 
-def random_point():
-    lat = 180.0 - 360.0 * random.random()
-    lng = 90.0 - 180.0 * random.random()
-    return Point(lat, lng)
+def stations(dt, db, prettyprint=False):
+    """The stations active at one time.
 
+    Takes a datetime and pymongo database. Returns list of KML Placemarks.
+    """
+    assert dt.minute == 0
+    assert dt.second == 0
+    assert dt.microsecond == 0
+    assert dt.tzinfo is None
 
-def stations(dt, prettyprint=False):
-    """Take a datetime and return list of Placemarks, the stations active."""
+    next_hour = dt + datetime.timedelta(hours=1)
+
     k = kml.KML(ns='')
-    doc = Document(name='stations')
+    kdoc = Document(name='stations')
 
-    # Fake weather stations.
-    for i in range(10000):
-        station_mark = kml.Placemark(
-            ns='', id=str(i), name=str(i), description='description')
+    # Positions of stations active in this hour. Needs index on 'ts'.
+    pipeline = [{
+        '$match': {'ts': {'$gte': dt, '$lt': next_hour}}
+    }, {
+        '$group': {
+            '_id': '$st',
+            'position': {'$first': '$position'}
+        }
+    }]
 
-        station_mark.geometry = random_point()
-        doc.append(station_mark)
+    start = time.time()
+    cursor = db.data.aggregate(pipeline=pipeline, cursor={})
+    n = 0
+    for doc in cursor:
+        station_mark = kml.Placemark(ns='', id=doc['_id'], name=doc['_id'])
+        n += 1
+        # GeoJSON and KML agree on the order: (longitude, latitude).
+        try:
+            station_mark.geometry = Point(*doc['position']['coordinates'])
+        except (TypeError, KeyError):
+            # Incomplete.
+            pass
 
-    k.append(doc)
+        kdoc.append(station_mark)
+
+    print 'stations(%s):' % dt, time.time() - start, 'seconds', n, 'docs'
+    k.append(kdoc)
     return k.to_string(prettyprint=prettyprint)
