@@ -47,3 +47,12 @@ system version. Then,
     pip install -r requirements.txt
 
 Compiling `lxml` takes some time.
+
+# Run the app
+
+    python century.py
+
+Now open [http://127.0.0.1:5000/][3] in your browser. If prompted, install
+the Google Earth plugin and restart your browser.
+
+[3]: http://127.0.0.1:5000/
