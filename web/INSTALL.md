@@ -8,18 +8,28 @@ and copy Canopy.app to your Applications folder.
 
 [1]: https://www.enthought.com/downloads/canopy/osx-64/free/
 
+The Canopy application isn't signed, so navigate to the Applications folder in the Finder
+and right-click on it, select "open" in the menu, click through the warning.
+
+In the "Canopy Environment setup" dialog, accept the default location and click
+"Continue". When it asks, "Do you want to make Canopy your default Python environment?"
+answer "No." Click "Start using Canopy." Now you can quit the Canopy application,
+the rest of the setup is on the command line.
+
 # Create a virtualenv with Canopy
 
-Create a `venv` tool with Canopy's distribution of python, then use it to
-create a virtualenv, then activate it:
+Create a `venv` tool with Canopy's distribution of python:
 
-    /Applications/Canopy.app/Contents/MacOS/Canopy_cli setup ~/canopy_base_env
-    ~/canopy_base_env/bin/venv -s ~/.virtualenvs/century
+    ~/Library/Enthought/Canopy_64bit/User/bin/venv -s ~/.virtualenvs/century
+
+The `-s` is important to include all the packages distributed with Canopy,
+like numpy. Now:
+
     . ~/.virtualenvs/century/bin/activate
 
 Your prompt should now begin with `(century)`.
 
-(Based on [Canopy's instructions][2].)
+(Adapted and corrected from [Canopy's instructions][2].)
 
 [2]: http://docs.enthought.com/canopy/configure/canopy-cli.html#scenario-creating-a-standalone-customizable-virtual-environment
 
