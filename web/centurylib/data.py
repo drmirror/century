@@ -24,11 +24,17 @@ def stations(dt, db, prettyprint=False):
 
     # Positions of stations active in this hour. Needs index on 'ts'.
     pipeline = [{
-        '$match': {'ts': {'$gte': dt, '$lt': next_hour}}
+        '$match': {
+            'ts': {'$gte': dt, '$lt': next_hour},
+            # Valid samples.
+            'airTemperature.quality': '1'
+        }
     }, {
         '$group': {
             '_id': '$st',
-            'position': {'$first': '$position'}
+            'position': {'$first': '$position'},
+            # Could average the temperatures, probably not worthwhile.
+            'airTemperature': {'$first': '$airTemperature'},
         }
     }]
 
