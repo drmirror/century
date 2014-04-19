@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, abort
+from flask import Flask, render_template, request, abort, url_for
 import pymongo
 
 from centurylib import data, parsing
@@ -19,9 +19,11 @@ def samples():
     if not dt:
         abort(400, "Can't parse date %r" % date_str)
 
+    icon_href = url_for('static', filename='triangulation.png')
+
     # Placemarks.
-    rv = data.stations(dt, db, prettyprint=False)
-    # print rv
+    rv = data.stations(dt, db, icon_href, prettyprint=app.debug)
+    print rv
     return rv
 
 
