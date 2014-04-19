@@ -62,7 +62,7 @@ def stations(dt, db, icon_href, prettyprint=False):
     overlay = GroundOverlay(ns='')
     overlay.geometry = [90, -90, 180, -180, 0]
     overlay.icon_href = icon_href
-    kdoc.append(overlay)
+    kdoc.append(overlay)  # Fails with upstream fastkml, need to update it.
 
     print 'stations(%s):' % dt, time.time() - start, 'seconds', n, 'docs'
     k.append(kdoc)
