@@ -4,6 +4,8 @@ import time
 from fastkml import kml, Document
 from fastkml.geometry import Point
 
+from centurylib import triangles
+
 
 def stations(dt, db, prettyprint=False):
     """The stations active at one time.
@@ -44,6 +46,11 @@ def stations(dt, db, prettyprint=False):
             pass
 
         kdoc.append(station_mark)
+
+    # TODO: horribly inefficient.
+    kml_triangles = triangles.triangles(dt, db)
+    for t in kml_triangles:
+        kdoc.append(t)
 
     print 'stations(%s):' % dt, time.time() - start, 'seconds', n, 'docs'
     k.append(kdoc)
