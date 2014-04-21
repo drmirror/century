@@ -132,13 +132,18 @@ public class DataLoader {
     
     private static abstract class Loader extends Thread {
         
-        private final int batchSize = 10000;
+        private int batchSize = 10000;
         private RecordParser parser = new RecordParser();
         
         private List<Document> buffer;
         protected MongoCollection<Document> data;
 
         public Loader (MongoClient client) {
+            this (client, 1000);
+        }
+        
+        public Loader (MongoClient client, int batchSize) {
+            this.batchSize = batchSize;
             MongoDatabase db = client.getDatabase("ncdc");
             data = db.getCollection("data");
             buffer = new ArrayList<Document>(batchSize);
@@ -186,7 +191,11 @@ public class DataLoader {
         private FilePool pool = null;
         
         public PoolLoader (MongoClient client, FilePool pool) {
-            super(client);
+            this (client, pool, 1000);
+        }
+        
+        public PoolLoader (MongoClient client, FilePool pool, int batchSize) {
+            super(client, batchSize);
             this.pool = pool;
         }
         
@@ -206,8 +215,8 @@ public class DataLoader {
      
         private String filename;
         
-        public FileLoader (MongoClient c, String filename) {
-            super (c);
+        public FileLoader (MongoClient c, String filename, int batchSize) {
+            super (c, batchSize);
             this.filename = filename;
         }
 
@@ -286,9 +295,10 @@ public class DataLoader {
     public static void main (String[] args) throws Exception {
 
         String dirname = args.length > 0 ? args[0] : ".";
-        int numThreads = args.length > 1 ? Integer.parseInt(args[1]) : 1; 
+        int numThreads = args.length > 1 ? Integer.parseInt(args[1]) : 1;
+        int batchSize  = args.length > 2 ? Integer.parseInt(args[2]) : 1000;
 
-        MongoClient c = MongoClients.create(new ServerAddress("localhost",27017));
+        MongoClient c = MongoClients.create(new ServerAddress("century-standalone",27017));
 
         File dir = new File(dirname);
         String[] flist = dir.list();
@@ -298,7 +308,7 @@ public class DataLoader {
         FilePool pool = new RandomFilePool(dirname, files, numThreads > 1);
         List<Loader> loaders = new ArrayList<Loader>();
         for (int i=0; i<numThreads; i++) {
-            loaders.add(new PoolLoader(c, pool));
+            loaders.add(new PoolLoader(c, pool, batchSize));
         }
         
         for (Loader l : loaders) l.start();
