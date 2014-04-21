@@ -14,17 +14,18 @@ ax = fig.add_subplot(111, projection='3d')
 u = np.linspace(0, 2 * np.pi, 100)
 v = np.linspace(0, np.pi, 100)
 
-r = .5  # Sphere radius.
+r = 100  # Sphere radius.
 
 x = r * np.outer(np.cos(u), np.sin(v))
 y = r * np.outer(np.sin(u), np.sin(v))
 z = r * np.outer(np.ones(np.size(u)), np.cos(v))
 ax.plot_wireframe(x, y, z, linestyle=':', rstride=4, cstride=4, color='#7777FF')
 
-m = Basemap(projection='merc',
+# Cylindrical projection, lat / lon coordinates.
+m = Basemap(projection='cyl',
             rsphere=r,
             resolution='l',
-            area_thresh=10000)
+            area_thresh=1000)
 
 # Adapted from Basemap.drawcoastlines().
 def drawcoastlines(m, linewidth=1., linestyle='solid', color='k', antialiased=1,
@@ -49,11 +50,12 @@ def drawcoastlines(m, linewidth=1., linestyle='solid', color='k', antialiased=1,
         segment3d = []
         for point in segment:
             lon, lat = point
-            lat -= math.pi
+            lonrads = np.pi * lon / 180.0
+            latrads = np.pi * lat / 180.0
             segment3d.append((
-                r * math.cos(-2 * lat) * math.cos(2 * lon),
-                r * math.cos(-2 * lat) * math.sin(2 * lon),
-                r * math.sin(-2 * lat)))
+                r * math.cos(latrads) * math.cos(lonrads),
+                r * math.cos(latrads) * math.sin(lonrads),
+                r * math.sin(latrads)))
 
         coastsegs3d.append(segment3d)
 
