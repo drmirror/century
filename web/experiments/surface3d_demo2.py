@@ -45,6 +45,7 @@ def drawcoastlines(m, linewidth=1., linestyle='solid', color='k', antialiased=1,
     )
 
     # Convert from Mercator to Cartesian 3-space.
+    # TODO: use numpy for this, not Python.
     coastsegs3d = []
     for segment in coastsegs:
         segment3d = []
