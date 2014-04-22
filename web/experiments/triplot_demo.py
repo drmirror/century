@@ -7,6 +7,7 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.tri import UniformTriRefiner, TriAnalyzer
 from matplotlib.tri.triangulation import Triangulation
+from mpl_toolkits.mplot3d import Axes3D  # Registers '3d' projection type.
 import matplotlib.cm as cm
 import numpy as np
 import pymongo
@@ -56,8 +57,6 @@ x = xytemp[:,0]
 y = xytemp[:,1]
 z = xytemp[:,2]
 
-# The earth is round but triangulation considers it flat. Simulate global
-# wrapping by copying the earth 9 times.
 start = time.time()
 # Add earths to the left and right of earth.
 x_expanded = np.concatenate((x - 360, x, x + 360))
@@ -76,14 +75,22 @@ print 'triangulation took %.2f sec' % (time.time() - start)
 #-----------------------------------------------------------------------------
 # Refine data
 #-----------------------------------------------------------------------------
-# refiner = UniformTriRefiner(triangulation)
-# tri_refi, z_test_refi = refiner.refine_field(z, subdiv=3)
+start = time.time()
+refiner = UniformTriRefiner(triangulation)
+tri_refi, z_test_refi = refiner.refine_field(z_tiled, subdiv=3)
+# tri_refi, z_test_refi = triangulation, z_tiled
+print 'refining took %.2f sec' % (time.time() - start)
+
 # masking badly shaped triangles at the border of the triangular mesh.
+# start = time.time()
 # mask = TriAnalyzer(tri_refi).get_flat_tri_mask(min_circle_ratio=.1)
 # tri_refi.set_mask(mask)
+# print 'masking took %.2f sec' % (time.time() - start)
 
 plt.figure()
 plt.gca().set_aspect('equal')
+
+# Hide tiled copies of earth.
 plt.gca().set_xlim(-180, 180)
 plt.gca().set_ylim(-90, 90)
 
@@ -94,11 +101,12 @@ zmax = int(z.max()) + 10
 
 print 'calculating maxima took %.2f sec' % (time.time() - start)
 
-levels = np.arange(zmin, zmax, (zmax - zmin) / 20.)
-cmap = cm.get_cmap(name='terrain', lut=None)
+levels = np.arange(zmin, zmax, (zmax - zmin) / 50.)
+print len(levels), 'levels'
+cmap = cm.get_cmap(name='terrain', lut=len(levels))
 # cmap.set_over('blue')
 # cmap.set_under('blue')
 
 # plt.triplot(triangulation, lw=0.5, color='black')
-plt.tricontourf(triangulation, z_tiled, levels=levels, cmap=cmap)
+plt.tricontourf(tri_refi, z_test_refi, levels=levels, cmap=cmap)
 plt.show()

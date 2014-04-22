@@ -1,12 +1,67 @@
 from math import acos, atan2, cos, sin
 import math
+import datetime
+from matplotlib import cm
+from matplotlib.colors import colorConverter
 
 from matplotlib.collections import LineCollection
-from mpl_toolkits.basemap import Basemap, cm
+from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
 import numpy as np
+import pymongo
+import time
+
+
+def make_temp_triangulation():
+    db = pymongo.MongoClient().ncdc
+
+    # Positions of stations active in this hour. Needs index on 'ts'.
+    dt = datetime.datetime(1978, 10, 01, 10)
+    next_hour = dt + datetime.timedelta(hours=1)
+
+    pipeline = [{
+        '$match': {
+            'ts': {'$gte': dt, '$lt': next_hour},
+            # Valid samples.
+            'airTemperature.quality': '1'
+        }
+    }, {
+        '$group': {
+            '_id': '$st',
+            'position': {'$first': '$position'},
+            # Could average the temperatures, probably not worthwhile.
+            'airTemperature': {'$first': '$airTemperature'},
+        }
+    }]
+
+    start = time.time()
+    cursor = db.data.aggregate(pipeline=pipeline, cursor={})
+    n = 0
+    data = []
+    for doc in cursor:
+        n += 1
+        try:
+            lng, lat = doc['position']['coordinates']
+            temp = doc['airTemperature']['value']
+        except KeyError:
+            # Incomplete.
+            pass
+        else:
+            data.append([lng, lat, temp])
+
+    print 'aggregation took %.2f sec' % (time.time() - start)
+    start = time.time()
+    lat_lng_tmp = np.asarray(data)
+    print 'arrayification took %.2f sec' % (time.time() - start)
+
+    lngs = lat_lng_tmp[:, 0]  # Degrees longitude.
+    lats = lat_lng_tmp[:, 1]  # Degrees latitude.
+    tmps = lat_lng_tmp[:, 2]  # Degrees centigrade.
+
+    return lngs, lats, tmps
+
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
@@ -24,8 +79,9 @@ ax.plot_wireframe(x, y, z, linestyle=':', rstride=4, cstride=4, color='#7777FF')
 # Cylindrical projection, lat / lon coordinates.
 m = Basemap(projection='cyl',
             rsphere=r,
-            resolution='l',
+            resolution='c',
             area_thresh=1000)
+
 
 # Adapted from Basemap.drawcoastlines().
 def drawcoastlines(m, linewidth=1., linestyle='solid', color='k', antialiased=1,
@@ -73,7 +129,15 @@ def drawcoastlines(m, linewidth=1., linestyle='solid', color='k', antialiased=1,
     return coastlines
 
 drawcoastlines(m)
-ax.autoscale_view()
+lng, lat, tmp = make_temp_triangulation()
+ax.plot_surface(
+    lng, lat, tmp,#np.zeros(len(lng)),
+    facecolors=[
+        colorConverter.to_rgba('r')
+    ] * len(lng))
 
+ax.set_xlim(-100, 100)
+ax.set_ylim(-100, 100)
+ax.set_zlim(-100, 100)
 plt.show()
 
