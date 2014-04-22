@@ -47,7 +47,7 @@ Success looks like this at the end:
 
 This section is obsolete, I just wanted to see what NetCDF could do. Skip
 over the SZIP, HDF5, and NetCDF installation and go straight
-to [Other Python dependencies][].
+to [Other Python dependencies](#other-python-dependencies).
 
 ***
 
@@ -131,7 +131,7 @@ Now:
 The library has been installed into your virtualenv's lib directory and
 you'll see a big "Congratulations!" message.
 
-## Other Python dependencies
+## Other Python dependencies<a id="other-py-deps"></a>
 
 Finally we can install our Python packages. The prior work has focused on
 making the [netCDF4][7] package installable:
