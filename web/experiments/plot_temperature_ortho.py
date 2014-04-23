@@ -20,8 +20,10 @@ def stations(dt):
     pipeline = [{
         '$match': {
             'ts': {'$gte': dt, '$lt': next_hour},
-            # Valid samples.
-            'airTemperature.quality': '1'
+            # Valid temperature samples.
+            'airTemperature.quality': '1',
+            # Positions of 0, 0 are probably invalid.
+            'position.coordinates': {'$ne': [0, 0]}
         }
     }, {
         '$group': {
