@@ -13,36 +13,41 @@ URL=URLbase+"%04i/%04i%02i/%04i%02i%02i/pgbh00.gdas.%04i%02i%02i%02i.grb2" %\
 data = Dataset(URL)
 # read lats,lons
 # reverse latitudes so they go from south to north.
-latitudes = data.variables['lat'][::-1]
-longitudes = data.variables['lon'][:].tolist()
+latitudes = data.variables['lat'][::-1]  # SHAPE (361, )
+longitudes = data.variables['lon'][:].tolist()  # SHAPE (720, )
 # get sea level pressure and 10-m wind data.
 # mult slp by 0.01 to put in units of hPa.
-slpin = 0.01*data.variables['Pressure_msl'][:].squeeze()
+slpin = 0.01*data.variables['Pressure_msl'][:].squeeze()  # SHAPE (361, 720)
 uin = data.variables['U-component_of_wind_height_above_ground'][:].squeeze()
 vin = data.variables['V-component_of_wind_height_above_ground'][:].squeeze()
 # add cyclic points manually (could use addcyclic function)
 slp = np.zeros((slpin.shape[0],slpin.shape[1]+1),np.float)
-slp[:,0:-1] = slpin[::-1]; slp[:,-1] = slpin[::-1,0]
+slp[:,0:-1] = slpin[::-1]; slp[:,-1] = slpin[::-1,0]  # SHAPE (361, 721)
 u = np.zeros((uin.shape[0],uin.shape[1]+1),np.float64)
 u[:,0:-1] = uin[::-1]; u[:,-1] = uin[::-1,0]
 v = np.zeros((vin.shape[0],vin.shape[1]+1),np.float64)
 v[:,0:-1] = vin[::-1]; v[:,-1] = vin[::-1,0]
 longitudes.append(360.); longitudes = np.array(longitudes)
 # make 2-d grid of lons, lats
-lons, lats = np.meshgrid(longitudes,latitudes)
+lons, lats = np.meshgrid(longitudes,latitudes)  # SHAPE (721, )
 # make orthographic basemap.
 m = Basemap(resolution='c',projection='ortho',lat_0=60.,lon_0=-60.)
 # create figure, add axes
 fig1 = plt.figure(figsize=(8,10))
 ax = fig1.add_axes([0.1,0.1,0.8,0.8])
 # set desired contour levels.
-clevs = np.arange(960,1061,5)
+clevs = np.arange(960,1061,5)  # SHAPE (21, )
 # compute native x,y coordinates of grid.
-x, y = m(lons, lats)
+x, y = m(lons, lats)  # Both shaped (361, 721)
 # define parallels and meridians to draw.
 parallels = np.arange(-80.,90,20.)
 meridians = np.arange(0.,360.,20.)
 # plot SLP contours.
+# shapes:
+#   x       (361, 721)
+#   y       (361, 721)
+#   slp     (361, 721)
+#   clevs   (21, )
 CS1 = m.contour(x,y,slp,clevs,linewidths=0.5,colors='k',animated=True)
 CS2 = m.contourf(x,y,slp,clevs,cmap=plt.cm.RdBu_r,animated=True)
 # plot wind vectors on projection grid.
