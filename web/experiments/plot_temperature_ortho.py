@@ -80,24 +80,25 @@ y_expanded = np.concatenate((y_tiled - 180, y_tiled, y_tiled + 180))
 temperatures_expanded = np.tile(temperatures, 9)
 print 'tiling took %.2f sec' % (time.time() - start)
 
-plt.gca().tripcolor(x_expanded, y_expanded, temperatures_expanded,
-                    shading='gouraud')
+start = time.time()
+triangulation = Triangulation(x_expanded, y_expanded)
+print 'triangulation took %.2f sec' % (time.time() - start)
 
-#
-# start = time.time()
-# triangulation = Triangulation(x_expanded, y_expanded)
-# print 'triangulation took %.2f sec' % (time.time() - start)
-#
 # start = time.time()
 # refiner = UniformTriRefiner(triangulation)
-# tri_refi, z_test_refi = refiner.refine_field(temperatures_expanded, subdiv=1)
-# print 'refining took %.2f sec' % (time.time() - start)
-#
-# # Plot weather stations' locations as small blue dots.
-# m.plot(x, y, 'b.')
-# plt.gca().plot(tri_refi)
+# subdiv = 1
+# tri_refi, z_test_refi = refiner.refine_field(temperatures_expanded,
+#                                              subdiv=subdiv)
+# print 'refining %d subdivisions took %.2f sec' % (subdiv, time.time() - start)
+
+# TODO: clip these to viewport.
+tri_refi = triangulation
+z_test_refi = temperatures_expanded
+# Plot weather stations' locations as small blue dots.
+m.plot(x, y, 'b.')
 # plt.gca().tricontour(tri_refi, z_test_refi, clevs, colors='g')
-# plt.gca().tricontourf(tri_refi, z_test_refi, clevs, cmap=plt.cm.RdBu_r)
+cmap = plt.cm.RdBu_r
+contour_plot = plt.gca().tricontourf(tri_refi, z_test_refi, clevs, cmap=cmap)
 
 # plot temperature contours.
 # TODO: animated=True??
