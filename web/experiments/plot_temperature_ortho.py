@@ -71,17 +71,60 @@ fig1 = plt.figure(figsize=(8, 10))
 ax = fig1.add_axes([0.1, 0.1, 0.8, 0.8])
 
 # compute native x,y coordinates of grid.
+print 'longitudes: [%.2f, %.2f], latitudes: [%.2f, %.2f]' % (
+    longitudes.min(), longitudes.max(), latitudes.min(), latitudes.max())
+
 x, y = m(longitudes, latitudes)
 
-start = time.time()
-# Add earths to the left and right of earth, copy the triple-earth 3 times.
-x_expanded = np.tile(np.concatenate((x - 360, x, x + 360)), 3)
-# Whereas x values are first expanded, then tiled, y values do the reverse.
-y_tiled = np.tile(y, 3)
-y_expanded = np.concatenate((y_tiled - 180, y_tiled, y_tiled + 180))
-temperatures_expanded = np.tile(temperatures, 9)
-print 'tiling took %.2f sec' % (time.time() - start)
 
+def expand_earth(x, y):
+    """Surround Earth with copies to simulate spherical wrapping.
+
+    Add earths to the left and right of earth, and vertically-flipped copies
+    above and below.
+
+         +---------+---------+
+         |         |         |
+         |    A    |    B    |
+         |         |         |
+    +----+----+----+----+----+-----+
+    |         |         |          |
+    |    C    |  earth  |    D     |
+    |         |         |          |
+    +----+----+----+----+----+-----+
+         |         |         |
+         |    E    |    F    |
+         |         |         |
+         +---------+---------+
+    """
+    start = time.time()
+
+    # Create C, earth, and D.
+    x_expanded = np.concatenate((x - 360, x, x + 360))
+    y_expanded = np.tile(y, 3)
+
+    # Add A. The earths below and above earth are flipped top-to-bottom.
+    x_expanded = np.concatenate((x_expanded, x - 180))
+    y_expanded = np.concatenate((y_expanded, -y + 180))
+
+    # Add B.
+    x_expanded = np.concatenate((x_expanded, x + 180))
+    y_expanded = np.concatenate((y_expanded, -y + 180))
+
+    # Add E.
+    x_expanded = np.concatenate((x_expanded, x - 180))
+    y_expanded = np.concatenate((y_expanded, -y - 180))
+
+    # Add F.
+    x_expanded = np.concatenate((x_expanded, x + 180))
+    y_expanded = np.concatenate((y_expanded, -y - 180))
+
+    temperatures_expanded = np.tile(temperatures, 7)
+    print 'tiling took %.2f sec' % (time.time() - start)
+    return x_expanded, y_expanded, temperatures_expanded
+
+
+x_expanded, y_expanded, temperatures_expanded = expand_earth(x, y)
 start = time.time()
 triangulation = Triangulation(x_expanded, y_expanded)
 print 'triangulation took %.2f sec' % (time.time() - start)
