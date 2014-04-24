@@ -7,8 +7,20 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap, shiftgrid
 from matplotlib.tri.triangulation import Triangulation
 import pymongo
+import sys
 
-dt = datetime.datetime(1978, 10, 01, 10)
+usage = "Usage: python plot_temperature_ortho.py '1991-10-01T10:00:00'"
+
+if len(sys.argv) != 2:
+    print usage
+    sys.exit()
+
+datestr = sys.argv[1]
+try:
+    dt = datetime.datetime.strptime(datestr, "%Y-%m-%dT%H:%M:%S")
+except ValueError:
+    print usage
+    sys.exit()
 
 
 def stations(dt):
@@ -43,13 +55,16 @@ def stations(dt):
         try:
             lon, lat = doc['position']['coordinates']
             tmp = doc['airTemperature']['value']
-        except KeyError:
+        except (TypeError, KeyError):
             # Incomplete.
             pass
         else:
             ret.append((lon, lat, tmp))
 
     print 'aggregation %d docs, took %.2f sec' % (n, time.time() - start)
+    if not ret:
+        print 'No results'
+        sys.exit()
     return ret
 
 
