@@ -1,0 +1,27 @@
+<html>
+<head>
+    <title>The Weather of the Century</title>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+    <script src="//www.google.com/jsapi?key=ABQIAAAA5El50zA4PeDTEMlv-sXFfRSsTL4WIgxhMZ0ZK_kHjwHeQuOD4xTdBhxbkZWuzyYTVeclkwYHpb17ZQ"></script>
+    <script src="{{ url_for('static', filename='jquery-2.1.0.js') }}"></script>
+    <script src="{{ url_for('static', filename='century.js') }}"></script>
+</head>
+<body>
+    <form id="addressform">
+        <label for="address">Address:</label>
+        <input id="address" name="address" type="text"
+               value="Sheraton Hotel Times Square New York NY">
+        <button type="submit">Geocode</button>
+    </form>
+    <span id="lat">0.0</span>,
+    <span id="lng">0.0</span>
+    <form id="dateform">
+        <label for="dateinput">Date:</label>
+        <input id="dateinput" name="date" type="text" value="1978-10-01 10">
+        <button type="submit">Go</button>
+    </form>
+    <span id="date">&nbsp;</span>
+    <div id="map3d" style="height:800px; width:1000px;"></div>
+
+</body>
+</html>
