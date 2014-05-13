@@ -24,14 +24,16 @@ public class StationLoader {
         String wban = line.substring(7,12);
         String name = line.substring(13,42).trim();
         String ctry = line.substring(46,48).trim();
-        Integer lat  = parseInt(line.substring(58,64));
-        Integer lon  = parseInt(line.substring(65,72));
+        String latStr = line.substring(58,64);
+        Integer lat  = parseInt(latStr);
+        String lonStr = line.substring(65,72);
+        Integer lon  = parseInt(lonStr);
         Integer elev = parseInt(line.substring(73,79));
         Date    begin = parseDate(line.substring(83,91));
         Date    end   = parseDate(line.substring(92,100));
         
         Document d = new Document();
-        d.append("st", generateStationId (usaf, wban, lat, lon));
+        d.append("st", generateStationId (usaf, wban, latStr, lonStr));
         if (!usaf.equals("999999")) d.append("usaf", usaf);
         if (!wban.equals("99999")) d.append("wban", wban);
         d.append ("name", name);

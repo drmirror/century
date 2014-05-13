@@ -22,9 +22,11 @@ import java.util.zip.GZIPInputStream;
 
 import org.mongodb.Document;
 import org.mongodb.MongoClient;
+import org.mongodb.MongoClientOptions;
 import org.mongodb.MongoClients;
 import org.mongodb.MongoCollection;
 import org.mongodb.MongoDatabase;
+import org.mongodb.WriteConcern;
 import org.mongodb.connection.ServerAddress;
 
 
@@ -51,8 +53,10 @@ public class DataLoader {
               throw new RuntimeException(ex);
             }
             String source = line.substring(27,28);
-            Integer lat = parseInt(line.substring(28,34));
-            Integer lon = parseInt(line.substring(34,41));
+            String latStr = line.substring(28,34);
+            Integer lat = parseInt(latStr);
+            String lonStr = line.substring(34,41);
+            Integer lon = parseInt(lonStr);
             
             String type = line.substring(41,46).trim();
             String elevStr = line.substring(46,51);
@@ -89,7 +93,7 @@ public class DataLoader {
             String visv = line.substring(85,86);
             String visvq = line.substring(86,87);
             
-            String st = generateStationId(usaf, wban, lat, lon);
+            String st = generateStationId(usaf, wban, latStr, lonStr);
             Document d = new Document("st", st);
             d.append("ts", ts);
             if (!"999999".equals(usaf)) d.append("usaf",usaf);
@@ -298,7 +302,9 @@ public class DataLoader {
         int numThreads = args.length > 1 ? Integer.parseInt(args[1]) : 1;
         int batchSize  = args.length > 2 ? Integer.parseInt(args[2]) : 1000;
 
-        MongoClient c = MongoClients.create(new ServerAddress("century-standalone",27017));
+        //MongoClientOptions options = MongoClientOptions.builder()
+        //  .writeConcern(WriteConcern.UNACKNOWLEDGED).build();
+        MongoClient c = MongoClients.create(new ServerAddress("localhost",27017));
 
         File dir = new File(dirname);
         String[] flist = dir.list();

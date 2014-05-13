@@ -35,13 +35,13 @@ public class Util {
         }
     }
     
-    public static String generateStationId (String usaf, String wban, Integer lat, Integer lon) {
+    public static String generateStationId (String usaf, String wban, String lat, String lon) {
         if (!"999999".equals(usaf)) {
             return "u" + usaf;
         } else if (!"99999".equals(wban)) {
             return "w" + wban;
         } else if (lat != null && lon != null) {
-            return "l" + lat + "l" + lon;
+            return "x" + lat + lon;
         } else {
             return "unknown";
         }
