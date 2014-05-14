@@ -5,11 +5,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.mongodb.Document;
+import com.mongodb.BasicDBObject;
 
 public abstract class Parser {
 
-    public abstract void parse (String data, int index, Document d);
+    public abstract void parse (String data, int index, BasicDBObject d);
     public abstract int endIndex();
     
     public static class MasterParser extends Parser {
@@ -524,7 +524,7 @@ public abstract class Parser {
             initParserMap();
         }
         
-        public void parse (String data, int index, Document d) {
+        public void parse (String data, int index, BasicDBObject d) {
             while (index < data.length()) {
                 Parser currentParser = parsers.get(data.substring(index,index+3));
                 if (currentParser == null) break;
@@ -545,7 +545,7 @@ public abstract class Parser {
             this.marker = marker;
             this.endIndex = endIndex;
         }
-        public void parse (String data, int index, Document d) {
+        public void parse (String data, int index, BasicDBObject d) {
             appendSection (data, index, d);
             // don't actually parse anything, that's done in the subclass
         }
@@ -555,7 +555,7 @@ public abstract class Parser {
         public int endIndex() {
             return endIndex;
         }
-        protected void appendSection (String data, int index, Document d) {
+        protected void appendSection (String data, int index, BasicDBObject d) {
             List<Object> sections = (List<Object>)d.get("sections");
             if (sections == null) {
                 sections = new ArrayList<Object>();
@@ -579,9 +579,9 @@ public abstract class Parser {
                 parsers.add(x);
             }
         }
-        public void parse (String data, int index, Document d) {
+        public void parse (String data, int index, BasicDBObject d) {
             appendSection(data,index,d);
-            Document result = new Document();
+            BasicDBObject result = new BasicDBObject();
             for (Parser p : parsers) {
                 p.parse (data, index, result);
             }
@@ -609,8 +609,8 @@ public abstract class Parser {
                 parsers.add(x);
             }
         }
-        public void parse (String data, int index, Document d) {
-            Document x = new Document();
+        public void parse (String data, int index, BasicDBObject d) {
+            BasicDBObject x = new BasicDBObject();
             d.append(fieldName, x);
             for (Parser p : parsers) p.parse (data, index, x);
         }
@@ -635,7 +635,7 @@ public abstract class Parser {
         public CodeParser (String fieldName, int startIndex, int endIndex) {
             super (fieldName, startIndex, endIndex);
         }
-        public void parse (String data, int index, Document d) {
+        public void parse (String data, int index, BasicDBObject d) {
             d.append(fieldName, data.substring(index+startIndex,index+endIndex));
         }
     }
@@ -649,7 +649,7 @@ public abstract class Parser {
             super (fieldName, startIndex, endIndex);
             this.scalingFactor = scalingFactor;
         }
-        public void parse (String data, int index, Document d) {
+        public void parse (String data, int index, BasicDBObject d) {
             int value = Util.parseInt(data.substring(index+startIndex,index+endIndex));
             if (scalingFactor == 1) {
                 d.append(fieldName, value);
@@ -661,7 +661,7 @@ public abstract class Parser {
     
     public static void main (String[] args) {
         Parser p = new MasterParser();
-        Document result = new Document();
+        BasicDBObject result = new BasicDBObject();
         p.parse("AA112000091AA224000091AY101061AY201061GF102991001001999999001081KA1999N-00211MA1999999099241MD1710231+9999MW1021REMSYN100AAXX  01061 01010 11989 21512 10009 21078 39924 49940 57023 60002 70200 80008 333 21021 70000 91117;EQDQ01  00002PRCP24Q02  00002PRCP12", 0, result);
         System.out.println(result);
     }

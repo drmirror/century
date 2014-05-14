@@ -20,15 +20,12 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 
-import org.mongodb.Document;
-import org.mongodb.MongoClient;
-import org.mongodb.MongoClientOptions;
-import org.mongodb.MongoClients;
-import org.mongodb.MongoCollection;
-import org.mongodb.MongoDatabase;
-import org.mongodb.WriteConcern;
-import org.mongodb.connection.ServerAddress;
-
+import com.mongodb.BasicDBObject;
+import com.mongodb.BulkWriteOperation;
+import com.mongodb.BulkWriteRequestBuilder;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.MongoClient;
 
 public class DataLoader {
 
@@ -43,7 +40,7 @@ public class DataLoader {
             df.setTimeZone(TimeZone.getTimeZone("UTC"));
         }
         
-        public Document parseRecord (String line) {
+        public BasicDBObject parseRecord (String line) {
             String usaf = line.substring(4,10);
             String wban = line.substring(10,15);
             Date ts = null;
@@ -94,11 +91,11 @@ public class DataLoader {
             String visvq = line.substring(86,87);
             
             String st = generateStationId(usaf, wban, latStr, lonStr);
-            Document d = new Document("st", st);
+            BasicDBObject d = new BasicDBObject("st", st);
             d.append("ts", ts);
             if (!"999999".equals(usaf)) d.append("usaf",usaf);
             if (!"99999".equals(wban))  d.append("wban",wban);
-            Document p = createPoint(lon, lat);
+            BasicDBObject p = createPoint(lon, lat);
             if (p != null) d.append ("position", p);
             d.append("elevation", elev);
             d.append("callLetters", call);
@@ -106,22 +103,22 @@ public class DataLoader {
             
             d.append("dataSource", source).append ("type", type);
             
-            d.append("airTemperature", new Document("value",temp).append("quality",tempQuality))
-              .append("dewPoint", new Document("value",dew).append("quality",dewQuality))
-              .append("pressure", new Document("value",press).append("quality", pressQuality))
-              .append("wind", new Document("direction", 
-                                 new Document("angle", wd).append("quality",wdq))
+            d.append("airTemperature", new BasicDBObject("value",temp).append("quality",tempQuality))
+              .append("dewPoint", new BasicDBObject("value",dew).append("quality",dewQuality))
+              .append("pressure", new BasicDBObject("value",press).append("quality", pressQuality))
+              .append("wind", new BasicDBObject("direction", 
+                                 new BasicDBObject("angle", wd).append("quality",wdq))
                               .append("type",wt)
-                              .append("speed",new Document ("rate",ws)
+                              .append("speed",new BasicDBObject ("rate",ws)
                                                     .append("quality",wsq)))
-              .append("visibility", new Document("distance",
-                                     new Document ("value", visd)
+              .append("visibility", new BasicDBObject("distance",
+                                     new BasicDBObject ("value", visd)
                                          . append ("quality", visdq))
                                     .append ("variability",
-                                       new Document("value", visv)
+                                       new BasicDBObject("value", visv)
                                          .append("quality", visvq)))
-              .append("skyCondition", new Document("ceilingHeight",
-                                        new Document("value", skyh)
+              .append("skyCondition", new BasicDBObject("ceilingHeight",
+                                        new BasicDBObject("value", skyh)
                                          .append("quality", skyq)
                                          .append("determination", skyd))
                                       .append("cavok", skyc));
@@ -137,10 +134,11 @@ public class DataLoader {
     private static abstract class Loader extends Thread {
         
         private int batchSize = 10000;
+        private boolean useBulk = true;
         private RecordParser parser = new RecordParser();
         
-        private List<Document> buffer;
-        protected MongoCollection<Document> data;
+        private List<BasicDBObject> buffer;
+        protected DBCollection data;
 
         public Loader (MongoClient client) {
             this (client, 1000);
@@ -148,27 +146,39 @@ public class DataLoader {
         
         public Loader (MongoClient client, int batchSize) {
             this.batchSize = batchSize;
-            MongoDatabase db = client.getDatabase("ncdc");
+            DB db = client.getDB("ncdc");
             data = db.getCollection("data");
-            buffer = new ArrayList<Document>(batchSize);
+            buffer = new ArrayList<BasicDBObject>(batchSize);
         }
 
         public void insert (String record) {
-            Document d = parser.parseRecord(record);
+            BasicDBObject d = parser.parseRecord(record);
             buffer.add(d);
             if (buffer.size() >= batchSize) {
-                data.insert(buffer);
+                if (useBulk) bulkInsert(data, buffer); else plainInsert(data, buffer);
                 buffer.clear();
             }
         }
         
         public void finish() {
             if (buffer.size() > 0) {
-                data.insert(buffer);
+                if (useBulk) bulkInsert(data, buffer); else plainInsert(data, buffer);
                 buffer.clear();
             }
         }
+        
+        private void bulkInsert (DBCollection data, List<BasicDBObject> buffer) {
+            BulkWriteOperation op = data.initializeUnorderedBulkOperation();
+            for (BasicDBObject o : buffer) {
+                op.insert(o);
+            }
+            op.execute();
+        }
 
+        private void plainInsert (DBCollection data, List<BasicDBObject> buffer) {
+            data.insert (buffer.toArray(new BasicDBObject[]{}));
+        }
+        
         protected void loadFile (String filename) {
             try {
                 BufferedReader in = filename.endsWith(".gz")
@@ -304,7 +314,7 @@ public class DataLoader {
 
         //MongoClientOptions options = MongoClientOptions.builder()
         //  .writeConcern(WriteConcern.UNACKNOWLEDGED).build();
-        MongoClient c = MongoClients.create(new ServerAddress("localhost",27017));
+        MongoClient c = new MongoClient("localhost");
 
         File dir = new File(dirname);
         String[] flist = dir.list();

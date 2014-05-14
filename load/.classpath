@@ -2,8 +2,6 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/bson"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/driver"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/util"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/mongo-java-driver-2"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

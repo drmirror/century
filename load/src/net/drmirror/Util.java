@@ -5,7 +5,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
-import org.mongodb.Document;
+import com.mongodb.BasicDBObject;
 
 public class Util {
 
@@ -47,17 +47,17 @@ public class Util {
         }
     } 
     
-    public static Document createPoint (Integer lon, Integer lat) {
+    public static BasicDBObject createPoint (Integer lon, Integer lat) {
         if (lon == null || lat == null) return null;
         if (lon < -180000 || lon > 180000
           || lat < -90000 || lat > 90000) return null; 
-        Document result = new Document("type", "Point");
+        BasicDBObject result = new BasicDBObject("type", "Point");
         result.append ("coordinates", Arrays.asList(lon/1000.0, lat/1000.0));
         return result;
     }
     
     public static void main (String[] args) {
-        Document d = new Document();
+        BasicDBObject d = new BasicDBObject();
         d.append("a.b", 1);
         System.out.println(d);
     }
