@@ -22,7 +22,6 @@ import java.util.zip.GZIPInputStream;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.BulkWriteOperation;
-import com.mongodb.BulkWriteRequestBuilder;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
@@ -314,7 +313,7 @@ public class DataLoader {
 
         //MongoClientOptions options = MongoClientOptions.builder()
         //  .writeConcern(WriteConcern.UNACKNOWLEDGED).build();
-        MongoClient c = new MongoClient("localhost");
+        MongoClient c = new MongoClient("century-one");
 
         File dir = new File(dirname);
         String[] flist = dir.list();
