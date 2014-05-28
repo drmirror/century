@@ -43,101 +43,10 @@ Success looks like this at the end:
 
 [2]: http://adcdownload.apple.com/Developer_Tools/command_line_tools_os_x_mavericks_for_xcode__april_2014/command_line_tools_for_osx_mavericks_april_2014.dmg
 
-## SZIP, HDF5, and NetCDF
+## Other Python dependencies
 
-This section is obsolete, I just wanted to see what NetCDF could do. Skip
-over the SZIP, HDF5, and NetCDF installation and go straight
-to [Other Python dependencies](#other-python-dependencies).
+Finally we can install our Python packages:
 
-***
-
-Based on these instructions[3] with some updates.
-
-[3]: http://cdx.jpl.nasa.gov/documents/technical-design/accessing-hdf-data-from-python-on-mac-os-x
-
-### libjpeg and libpng
-
-Download [libjpeg and libpng][4] and run the installer.
-
-[4]: http://ethan.tira-thompson.com/Mac%20OS%20X%20Ports_files/libjpeg-libpng%20%28universal%29.dmg
-
-### SZIP
-
-Make sure you're still in your virtualenv. `$VIRTUAL_ENV` should be set in
-your environment. Install SZIP:
-
-    curl ftp://ftp.hdfgroup.org/lib-external/szip/2.1/src/szip-2.1.tar.gz | tar xzf -
-    cd szip-2.1
-    ./configure --prefix=$VIRTUAL_ENV --enable-shared --enable-production
-    make
-    make check
-
-If success, you'll see "All test passed." Now:
-
-    make install
-    cd ..
-
-Should see:
-
-    Libraries have been installed in:
-       /Users/emptysquare/.virtualenvs/century/lib
-
-### HDF5
-
-Install HDF5 from [these instructions][5] with some corrections:
-
-    curl http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.12.tar.gz | tar xzf -
-    cd hdf5-1.8.12
-    ./configure \
-        --prefix=$VIRTUAL_ENV \
-        --enable-shared \
-        --enable-production \
-        --with-szlib=$VIRTUAL_ENV \
-        CPPFLAGS=-I$VIRTUAL_ENV/include \
-        LDFLAGS=-L$VIRTUAL_ENV/lib
-    make install
-
-(We configured without `--enable-threadsafe` because we don't think we
-need it, and it avoids an error:
-"implicit declaration of function 'pthread_once' is invalid in C99".)
-
-[5]: http://cdx.jpl.nasa.gov/documents/technical-design/accessing-hdf-data-from-python-on-mac-os-x
-
-### NETCDF
-
-    curl ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf.tar.gz | tar xvzf -
-    cd netcdf-4.3.0
-    ./configure \
-        --prefix=$VIRTUAL_ENV \
-        --with-szlib=$VIRTUAL_ENV \
-        --enable-netcdf-4 \
-        CPPFLAGS=-I$VIRTUAL_ENV/include \
-        LDFLAGS=-L$VIRTUAL_ENV/lib
-
-(We're surprised to see a warning: "unrecognized options: --with-szlib".)
-
-Don't run `make` immediately. Based on [this discussion][6] you now need to
-insert a line at the beginning of `genlib.h`:
-
-    echo -e "#include <config.h>\n$(cat ncgen3/genlib.h)" > ncgen3/genlib.h
-
-Now:
-
-    make
-    make install
-
-[6]: https://github.com/Homebrew/homebrew-science/issues/369#issuecomment-27216871
-
-The library has been installed into your virtualenv's lib directory and
-you'll see a big "Congratulations!" message.
-
-## Other Python dependencies<a id="other-py-deps"></a>
-
-Finally we can install our Python packages. The prior work has focused on
-making the [netCDF4][7] package installable:
-
-    export HDF5_DIR=$VIRTUAL_ENV
-    export NETCDF4_DIR=$VIRTUAL_ENV
     cdvirtualenv century/web/experiments
     pip install -r requirements.txt
 
@@ -148,4 +57,4 @@ netCDF4.
 
 ## ffmpeg
 
-http://ffmpegmac.net/
+Download from http://ffmpegmac.net/
