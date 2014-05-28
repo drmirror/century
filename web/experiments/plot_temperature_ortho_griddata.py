@@ -86,7 +86,7 @@ def expand_earth(x, y):
     """Surround Earth with copies to simulate spherical wrapping.
 
     Add earths to the left and right of earth, and vertically-flipped copies
-    above and below.
+    above and below (A, B, E, and F):
 
          +---------+---------+
          |         |         |

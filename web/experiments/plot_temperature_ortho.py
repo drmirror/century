@@ -155,7 +155,7 @@ print 'triangulation took %.2f sec' % (time.time() - start)
 tri_refi = triangulation
 z_test_refi = temperatures_expanded
 # Plot weather stations' locations as small blue dots.
-m.plot(x, y, 'b.')
+# m.plot(x, y, 'b.')
 # plt.gca().tricontour(tri_refi, z_test_refi, clevs, colors='g')
 cmap = plt.cm.RdBu_r
 contour_plot = plt.gca().tricontourf(tri_refi, z_test_refi, clevs, cmap=cmap)
