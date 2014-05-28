@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 from mpl_toolkits.basemap import Basemap, shiftgrid
 from matplotlib.tri.triangulation import Triangulation
-import pymongo
 import sys
+from viz.connect import get_db
 
 usage = "Usage: python plot_temperature_ortho_griddata.py '1991-10-01T10:00:00'"
 
@@ -27,7 +27,7 @@ except ValueError:
 
 
 def stations(dt):
-    db = pymongo.MongoClient().ncdc
+    db = get_db()
 
     next_hour = dt + datetime.timedelta(hours=1)
 
