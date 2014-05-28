@@ -2,14 +2,12 @@
 
 import datetime
 import time
+import sys
 
 import numpy as np
-import numpy.ma as ma
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
-from mpl_toolkits.basemap import Basemap, shiftgrid
-from matplotlib.tri.triangulation import Triangulation
-import sys
+from mpl_toolkits.basemap import Basemap
 from viz.connect import get_db
 
 usage = "Usage: python plot_temperature_ortho_griddata.py '1991-10-01T10:00:00'"
