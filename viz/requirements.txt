@@ -2,3 +2,4 @@
 # which includes numpy, scipy, matplotlib, and others. See
 # "experiments/INSTALL.md" for basemap's extensive installation process.
 pymongo
+yappi
