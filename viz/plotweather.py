@@ -61,21 +61,21 @@ def stations(options, dt):
 
     # Positions of stations active in this hour. Needs index on 'ts'.
     pipeline = [{
-                    '$match': {
-                        'ts': {'$gte': dt, '$lt': next_hour(dt)},
-                        # Valid temperature samples.
-                        'airTemperature.quality': '1',
-                        # Positions of 0, 0 are probably invalid.
-                        'position.coordinates': {'$ne': [0, 0]}
-                    }
-                }, {
-                    '$group': {
-                        '_id': '$st',
-                        'position': {'$first': '$position'},
-                        # Could average the temperatures, probably not worthwhile.
-                        'airTemperature': {'$first': '$airTemperature'},
-                    }
-                }]
+        '$match': {
+            'ts': {'$gte': dt, '$lt': next_hour(dt)},
+            # Valid temperature samples.
+            'airTemperature.quality': '1',
+            # Positions of 0, 0 are probably invalid.
+            'position.coordinates': {'$ne': [0, 0]}
+        }
+    }, {
+        '$group': {
+            '_id': '$st',
+            'position': {'$first': '$position'},
+            # Could average the temperatures, probably not worthwhile.
+            'airTemperature': {'$first': '$airTemperature'},
+        }
+    }]
 
     start = time.time()
     cursor = db.data.aggregate(pipeline=pipeline, cursor={})
