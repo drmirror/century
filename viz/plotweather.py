@@ -1,38 +1,57 @@
 # Just like plot_temperature_ortho.py but uses scipy.interpolate.griddata.
 
+import optparse
 import datetime
 import time
 import sys
 
+import dateutil.parser
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 from mpl_toolkits.basemap import Basemap
 from viz.connect import get_db
 
-usage = "Usage: python plot_temperature_ortho_griddata.py '1991-10-01T10:00:00'"
 
-if len(sys.argv) != 2:
-    print usage
-    sys.exit()
+def parse_options(argv):
+    """Parse args and return options, start, end.
 
-datestr = sys.argv[1]
-try:
-    dt = datetime.datetime.strptime(datestr, "%Y-%m-%dT%H:%M:%S")
-except ValueError:
-    print usage
-    sys.exit()
+    args can be from sys.argv. start and end are datetimes.
+    """
+    usage = "python %prog START [END]"
+    parser = optparse.OptionParser(usage=usage)
+
+    options, args = parser.parse_args(argv)
+
+    # args[0] is the program name.
+    if len(args) not in (2, 3):
+        parser.error("incorrect number of arguments")
+
+    print 'args', args
+    start = hour(dateutil.parser.parse(args[1]))
+    if len(args) == 3:
+        end = hour(dateutil.parser.parse(args[2]))
+    else:
+        end = next_hour(start)
+
+    return options, start, end
+
+
+def hour(dt):
+    return dt.replace(minute=0, second=0, microsecond=0)
+
+
+def next_hour(dt):
+    return dt + datetime.timedelta(hours=1)
 
 
 def stations(dt):
     db = get_db()
 
-    next_hour = dt + datetime.timedelta(hours=1)
-
     # Positions of stations active in this hour. Needs index on 'ts'.
     pipeline = [{
                     '$match': {
-                        'ts': {'$gte': dt, '$lt': next_hour},
+                        'ts': {'$gte': dt, '$lt': next_hour(dt)},
                         # Valid temperature samples.
                         'airTemperature.quality': '1',
                         # Positions of 0, 0 are probably invalid.
@@ -69,7 +88,9 @@ def stations(dt):
     return ret
 
 
-station_data = np.array(stations(dt))
+options, start, end = parse_options(sys.argv)
+
+station_data = np.array(stations(start))
 longitudes = station_data[:, 0]
 latitudes = station_data[:, 1]
 temperatures = station_data[:, 2]
