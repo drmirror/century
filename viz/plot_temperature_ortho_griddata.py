@@ -145,11 +145,11 @@ zi = griddata((x_expanded, y_expanded),
               (xi[None, :], yi[:, None]),
               method='linear')
 
-# CS1 = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
+CS1 = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k', alpha=0.25)
 CS2 = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.RdBu_r)
 
 # Plot weather stations' locations as small blue dots.
-# m.plot(x, y, 'b.')
+m.plot(x, y, 'b.', alpha=0.25)
 
 # define parallels and meridians to draw.
 parallels = np.arange(-80., 90, 20.)
