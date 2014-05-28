@@ -20,19 +20,30 @@ def parse_options(argv):
     """
     usage = "python %prog START [END]"
     parser = optparse.OptionParser(usage=usage)
-
+    parser.add_option('-p', '--port', type=int, default=4321)
     options, args = parser.parse_args(argv)
 
     # args[0] is the program name.
     if len(args) not in (2, 3):
         parser.error("incorrect number of arguments")
 
-    print 'args', args
-    start = hour(dateutil.parser.parse(args[1]))
+    start, end = None, None
+    try:
+        start = hour(dateutil.parser.parse(args[1]))
+    except Exception:
+        parser.error("Couldn't parse start date")
+
     if len(args) == 3:
-        end = hour(dateutil.parser.parse(args[2]))
+        try:
+            end = hour(dateutil.parser.parse(args[2]))
+        except Exception:
+            parser.error("Couldn't parse end date")
+
     else:
         end = next_hour(start)
+
+    if end - start < datetime.timedelta(hours=1):
+        parser.error("END must be at least an hour after START")
 
     return options, start, end
 
@@ -45,8 +56,8 @@ def next_hour(dt):
     return dt + datetime.timedelta(hours=1)
 
 
-def stations(dt):
-    db = get_db()
+def stations(options, dt):
+    db = get_db(options.port)
 
     # Positions of stations active in this hour. Needs index on 'ts'.
     pipeline = [{
@@ -90,7 +101,7 @@ def stations(dt):
 
 options, start, end = parse_options(sys.argv)
 
-station_data = np.array(stations(start))
+station_data = np.array(stations(options, start))
 longitudes = station_data[:, 0]
 latitudes = station_data[:, 1]
 temperatures = station_data[:, 2]
