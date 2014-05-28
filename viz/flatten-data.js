@@ -4,7 +4,7 @@
 
 db.data.aggregate([{
     $match: {
-        ts: {$gt: ISODate("2013-12-00T00:00:00")},
+        ts: {$gt: ISODate("2013-12-01T00:00:00")},
         // Valid temperature samples.
         'airTemperature.quality': '1',
         // Positions of 0, 0 are probably invalid.
