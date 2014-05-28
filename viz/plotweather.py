@@ -188,6 +188,9 @@ def main(argv):
 
     timer = timer_factory(options)
 
+    # make orthographic basemap.
+    m = Basemap(resolution='c', projection='cyl', lat_0=60., lon_0=-60.)
+
     while True:
         with timer('loop'):
             print dt
@@ -196,16 +199,9 @@ def main(argv):
             latitudes = station_data[:, 1]
             temperatures = station_data[:, 2]
 
-            # make orthographic basemap.
-            m = Basemap(resolution='c', projection='cyl', lat_0=60., lon_0=-60.)
-
             x, y = m(longitudes, latitudes)
             x_expanded, y_expanded, temperatures_expanded = expand_earth(
                 x, y, temperatures)
-
-            # set desired contour levels.
-            clevs = np.arange(
-                temperatures.min() - 10, temperatures.max() + 10, 5)
 
             # create figure, add axes
             fig1 = plt.figure(figsize=(8, 10))
