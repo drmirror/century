@@ -145,3 +145,7 @@ You'll see a lot of "Using deprecated NumPy API" warnings while installing
 netCDF4.
 
 [7]: https://pypi.python.org/pypi/netCDF4/
+
+## ffmpeg
+
+http://ffmpegmac.net/
