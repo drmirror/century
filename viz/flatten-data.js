@@ -24,4 +24,4 @@ db.data.aggregate([{
     $out: 'flattened'
 }], {allowDiskUse: true});
 
-db.flattened.ensureIndex({ts: 1});
+db.flattened.ensureIndex({t: 1});
