@@ -1,3 +1,4 @@
+import collections
 import contextlib
 import optparse
 import datetime
@@ -10,6 +11,7 @@ import dateutil.parser
 import numpy as np
 import matplotlib.pyplot as plt
 import monary
+import pytz
 import yappi
 from scipy.interpolate import griddata
 from mpl_toolkits.basemap import Basemap
@@ -36,16 +38,19 @@ def parse_options(argv):
 
     start, end = None, None
     try:
-        start = hour(dateutil.parser.parse(args[1]))
+        start = hour(dateutil.parser.parse(args[1], ignoretz=True))
     except Exception:
         parser.error("Couldn't parse start date")
 
+    start = start.replace(tzinfo=pytz.UTC)
+
     if len(args) == 3:
         try:
-            end = hour(dateutil.parser.parse(args[2]))
+            end = hour(dateutil.parser.parse(args[2], ignoretz=True))
         except Exception:
             parser.error("Couldn't parse end date")
 
+        end = end.replace(tzinfo=pytz.UTC)
     else:
         end = next_hour(start)
 
@@ -74,17 +79,24 @@ def next_hour(dt):
     return dt + datetime.timedelta(hours=1)
 
 
-def stations(options, monary_connection, dt):
+def stations(options, monary_connection, dt, hours):
+    """Get station data from datetime to datetime + (hours - 1).
+
+    Returns numpy arrays: (timestamps, lons, lats, temperatures).
+    """
     timer = timer_factory(options)
+    datetimes = [
+        dt + datetime.timedelta(hours=h)
+        for h in range(hours)]
 
-    query = {'t': {'$gte': dt, '$lt': next_hour(dt)}}
-
+    query = {'t': {'$in': datetimes}}
     with timer('query'):
         # Query the "flattened" collection made by flatten-data.js.
         arrays = monary_connection.query(
             db='ncdc',
             coll='flattened',
             query=query,
+            sort='t',
             # Timestamp, lon, lat, air temperature.
             fields=['t', 'x', 'y', 'a'],
             types=['date', 'float32', 'float32', 'int8'])
@@ -145,48 +157,73 @@ def make_movie(glob_pattern, outname):
         "ffmpeg -r 6 -pattern_type glob -i '%s'"
         " -c:v libx264 -r 6 -pix_fmt yuv420p %s") % (glob_pattern, outname)
 
+    print
+    print cmd
+    print
     if 0 != os.system(cmd):
         raise Exception()
 
 
-def main(argv):
-    options, start, end = parse_options(argv)
-    td = end - start
-    total_hours = td.days * 24 + td.seconds / 3600
-    print '%d hours' % total_hours
+def dt_from_monary(monary_timestamp):
+    return datetime.datetime.fromtimestamp(float(monary_timestamp) / 1000.0)
 
-    if options.profile:
-        yappi.start(builtins=True)
 
-    dt = start
+def dt_to_monary(dt):
+    return 1000.0 * time.mktime(dt.timetuple())
 
-    if options.movie:
-        if os.path.exists('tmp'):
-            shutil.rmtree('tmp')
 
-        os.mkdir('tmp')
+def get_slice(timestamps, start, end):
+    start_i = np.argmax(timestamps >= dt_to_monary(start))
+    length = np.argmax(timestamps[start_i:] >= dt_to_monary(end))
 
+    # Final segment.
+    if not length:
+        length = len(timestamps[start_i:])
+
+    return slice(start_i, start_i + length)
+
+
+def loop(options, monary_connection, m, dt, n_hours):
+    """Render a chunk of frames.
+
+    m is the Basemap, dt the start time of the chunk.
+    """
     timer = timer_factory(options)
 
-    # make orthographic basemap.
-    m = Basemap(resolution='c', projection='cyl', lat_0=60., lon_0=-60.)
+    with timer('loop'):
+        station_data = stations(options, monary_connection, dt, n_hours)
 
-    monary_connection = monary.Monary(port=options.port)
+        timestamps, longitudes, latitudes, temperatures = station_data
 
-    while True:
-        with timer('loop'):
-            print dt
-            station_data = stations(options, monary_connection, dt)
-            timestamps, longitudes, latitudes, temperatures = station_data
+        print 'got %d rows for %s and next %d hours' % (
+            len(timestamps), dt, n_hours)
 
-            x, y = m(longitudes, latitudes)
+        # Fix timezone issue.
+        tz_offset_ms = dt_to_monary(dt) - timestamps[0]
+        timestamps += tz_offset_ms
+
+        for k, v in sorted(collections.Counter(timestamps).items()):
+            print '\t%s: %d %d' % (dt_from_monary(k), k, v)
+
+        chunk_dts = [dt + datetime.timedelta(hours=h) for h in range(n_hours)]
+        for chunk_dt in chunk_dts:
+            chunk_dt_str = chunk_dt.strftime('%Y-%m-%d %H:%M')
+            chunk_slice = get_slice(timestamps,
+                                    chunk_dt,
+                                    chunk_dt + datetime.timedelta(hours=1))
+
+            print '%s: slice = %s, %d points' % (
+                chunk_dt_str,
+                chunk_slice, len(temperatures[chunk_slice]))
+
+            x, y = m(longitudes[chunk_slice], latitudes[chunk_slice])
             x_expanded, y_expanded, temperatures_expanded = expand_earth(
-                x, y, temperatures)
+                x, y, temperatures[chunk_slice])
 
             # create figure, add axes
             fig1 = plt.figure(figsize=(8, 4.2))
             ax = fig1.add_axes([0, 0, 1, .93])
-            ax.set_title(str(dt))
+            ax.set_title(chunk_dt_str)
 
             # Expanded grid, larger than earth.
             xi = np.linspace(-360, 359, 720)
@@ -217,24 +254,51 @@ def main(argv):
                 m.drawmeridians(meridians)
 
             if options.movie:
-                plt.savefig('tmp/%s.png' % dt)
-                if dt < end:
-                    # Loop
-                    dt = next_hour(dt)
-                else:
-                    if os.path.exists('out.mp4'):
-                        os.remove('out.mp4')
-
-                    make_movie('tmp/*.png', 'out.mp4')
-                    os.system('open out.mp4')
-                    break
+                plt.savefig('tmp/%s.png' % chunk_dt.strftime('%Y-%m-%d %H'))
             else:
                 plt.show()
                 break
 
             plt.close()
 
+
+def main(argv):
+    options, start, end = parse_options(argv)
+    td = end - start
+    total_hours = td.days * 24 + td.seconds / 3600
+    print '%d hours' % total_hours
+
+    if options.profile:
+        yappi.start(builtins=True)
+
+    if options.movie:
+        if os.path.exists('tmp'):
+            shutil.rmtree('tmp')
+
+        os.mkdir('tmp')
+
+    # Make orthographic basemap.
+    m = Basemap(resolution='c', projection='cyl', lat_0=60., lon_0=-60.)
+
+    monary_connection = monary.Monary(port=options.port)
+    dt = start
+    n_hours = 10
+
+    while dt <= end:
+        loop(options, monary_connection, m, dt, n_hours)
+        dt += datetime.timedelta(hours=n_hours)
+
+        if not options.movie:
+            break
+
     monary_connection.close()
+
+    if options.movie:
+        if os.path.exists('out.mp4'):
+            os.remove('out.mp4')
+
+        make_movie('tmp/*.png', 'out.mp4')
+        os.system('open out.mp4')
 
     if options.profile:
         yappi.stop()
