@@ -142,8 +142,8 @@ def expand_earth(x, y, temperatures):
 
 def make_movie(glob_pattern, outname):
     cmd = (
-        "ffmpeg -pattern_type glob -i '%s'"
-        " -c:v libx264 -r 30 -pix_fmt yuv420p %s") % (glob_pattern, outname)
+        "ffmpeg -r 6 -pattern_type glob -i '%s'"
+        " -c:v libx264 -r 6 -pix_fmt yuv420p %s") % (glob_pattern, outname)
 
     if 0 != os.system(cmd):
         raise Exception()
@@ -151,6 +151,9 @@ def make_movie(glob_pattern, outname):
 
 def main(argv):
     options, start, end = parse_options(argv)
+    td = end - start
+    total_hours = td.days * 24 + td.seconds / 3600
+    print '%d hours' % total_hours
 
     if options.profile:
         yappi.start(builtins=True)
@@ -181,8 +184,9 @@ def main(argv):
                 x, y, temperatures)
 
             # create figure, add axes
-            fig1 = plt.figure(figsize=(8, 10))
-            ax = fig1.add_axes([0.1, 0.1, 0.8, 0.8])
+            fig1 = plt.figure(figsize=(8, 4.2))
+            ax = fig1.add_axes([0, 0, 1, .93])
+            ax.set_title(str(dt))
 
             # Expanded grid, larger than earth.
             xi = np.linspace(-360, 359, 720)
