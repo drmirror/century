@@ -3,3 +3,4 @@
 # "experiments/INSTALL.md" for basemap's extensive installation process.
 pymongo
 yappi
+https://bitbucket.org/djcbeach/monary/get/tip.tar.gz

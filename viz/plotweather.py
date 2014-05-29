@@ -9,11 +9,10 @@ import sys
 import dateutil.parser
 import numpy as np
 import matplotlib.pyplot as plt
+import monary
 import yappi
 from scipy.interpolate import griddata
 from mpl_toolkits.basemap import Basemap
-
-from viz.connect import get_db
 
 
 def parse_options(argv):
@@ -75,48 +74,26 @@ def next_hour(dt):
     return dt + datetime.timedelta(hours=1)
 
 
-def stations(options, dt):
+def stations(options, monary_connection, dt):
     timer = timer_factory(options)
-    db = get_db(options.port)
 
-    # Positions of stations active in this hour. Needs index on 'ts'.
-    pipeline = [{
-        '$match': {
-            'ts': {'$gte': dt, '$lt': next_hour(dt)},
-            # Valid temperature samples.
-            'airTemperature.quality': '1',
-            # Positions of 0, 0 are probably invalid.
-            'position.coordinates': {'$ne': [0, 0]}
-        }
-    }, {
-        '$group': {
-            '_id': '$st',
-            'position': {'$first': '$position'},
-            # Could average the temperatures, probably not worthwhile.
-            'airTemperature': {'$first': '$airTemperature'},
-        }
-    }]
+    query = {'t': {'$gte': dt, '$lt': next_hour(dt)}}
 
-    with timer('aggregate'):
-        cursor = db.data.aggregate(pipeline=pipeline, cursor={})
-        n = 0
-        ret = []
-        for doc in cursor:
-            n += 1
-            try:
-                lon, lat = doc['position']['coordinates']
-                tmp = doc['airTemperature']['value']
-            except (TypeError, KeyError):
-                # Incomplete.
-                pass
-            else:
-                ret.append((lon, lat, tmp))
+    with timer('query'):
+        # Query the "flattened" collection made by flatten-data.js.
+        arrays = monary_connection.query(
+            db='ncdc',
+            coll='flattened',
+            query=query,
+            # Timestamp, lon, lat, air temperature.
+            fields=['t', 'x', 'y', 'a'],
+            types=['date', 'float32', 'float32', 'int8'])
 
-    if not ret:
+    if not len(arrays[0]):
         print 'No results'
         sys.exit()
 
-    return ret
+    return arrays
 
 
 def expand_earth(x, y, temperatures):
@@ -191,13 +168,13 @@ def main(argv):
     # make orthographic basemap.
     m = Basemap(resolution='c', projection='cyl', lat_0=60., lon_0=-60.)
 
+    monary_connection = monary.Monary(port=options.port)
+
     while True:
         with timer('loop'):
             print dt
-            station_data = np.array(stations(options, dt))
-            longitudes = station_data[:, 0]
-            latitudes = station_data[:, 1]
-            temperatures = station_data[:, 2]
+            station_data = stations(options, monary_connection, dt)
+            timestamps, longitudes, latitudes, temperatures = station_data
 
             x, y = m(longitudes, latitudes)
             x_expanded, y_expanded, temperatures_expanded = expand_earth(
@@ -252,6 +229,8 @@ def main(argv):
                 break
 
             plt.close()
+
+    monary_connection.close()
 
     if options.profile:
         yappi.stop()
