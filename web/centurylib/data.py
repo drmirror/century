@@ -1,8 +1,21 @@
 import datetime
 import time
 
-from fastkml import kml, Document
-from fastkml.geometry import Point
+from lxml import etree
+
+
+def cent_to_fahr(c):
+    return 32 + 9 * c / 5
+
+
+placemark_style = '''
+<Style id="downArrowIcon">
+  <IconStyle>
+    <Icon>
+      <href>http://maps.google.com/mapfiles/kml/pal4/icon28.png</href>
+    </Icon>
+  </IconStyle>
+</Style>'''
 
 
 def stations(dt, db, prettyprint=False):
@@ -17,8 +30,11 @@ def stations(dt, db, prettyprint=False):
 
     next_hour = dt + datetime.timedelta(hours=1)
 
-    k = kml.KML(ns='')
-    kdoc = Document(name='stations')
+    root = etree.Element('kml')
+    root.set('xmlns', 'http://www.opengis.net/kml/2.2')
+    kdoc = etree.SubElement(root, 'Document')
+    etree.SubElement(kdoc, 'name').text = 'stations'
+    etree.SubElement(kdoc, 'visibility').text = '1'
 
     # Positions of stations active in this hour. Needs index on 'ts'.
     pipeline = [{
@@ -40,17 +56,24 @@ def stations(dt, db, prettyprint=False):
     cursor = db.data.aggregate(pipeline=pipeline, cursor={})
     n = 0
     for doc in cursor:
-        station_mark = kml.Placemark(ns='', id=doc['_id'], name=doc['_id'])
-        n += 1
-        # GeoJSON and KML agree on the order: (longitude, latitude).
         try:
-            station_mark.geometry = Point(*doc['position']['coordinates'])
-        except (TypeError, KeyError):
+            lon, lat = doc['position']['coordinates']
+        except (IndexError, KeyError):
             # Incomplete.
-            pass
+            continue
 
-        kdoc.append(station_mark)
+        mark = etree.SubElement(kdoc, 'Placemark')
+        mark.set('id', doc['_id'])
+        etree.SubElement(mark, 'visibility').text = '1'
+
+        point = etree.SubElement(mark, 'Point')
+        coordinates = etree.SubElement(point, 'coordinates')
+        coordinates.text = '%f,%f' % (lon, lat)
+
+        name = str(int(cent_to_fahr(doc['airTemperature']['value'])))
+        etree.SubElement(mark, 'name').text = name
+
+        n += 1
 
     print 'stations(%s):' % dt, time.time() - start, 'seconds', n, 'docs'
-    k.append(kdoc)
-    return k.to_string(prettyprint=prettyprint)
+    return etree.tostring(root, pretty_print=prettyprint)
