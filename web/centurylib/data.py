@@ -8,14 +8,12 @@ def cent_to_fahr(c):
     return 32 + 9 * c / 5
 
 
-placemark_style = '''
-<Style id="downArrowIcon">
-  <IconStyle>
-    <Icon>
-      <href>http://maps.google.com/mapfiles/kml/pal4/icon28.png</href>
-    </Icon>
-  </IconStyle>
-</Style>'''
+placemark_style = etree.Element('Style')
+placemark_style.set('id', 'stationMark')
+icon_style = etree.SubElement(placemark_style, 'IconStyle')
+icon = etree.SubElement(icon_style, 'Icon')
+href = etree.SubElement(icon, 'href')
+href.text = '/static/icon.png'
 
 
 def stations(dt, db, prettyprint=False):
@@ -35,6 +33,7 @@ def stations(dt, db, prettyprint=False):
     kdoc = etree.SubElement(root, 'Document')
     etree.SubElement(kdoc, 'name').text = 'stations'
     etree.SubElement(kdoc, 'visibility').text = '1'
+    kdoc.append(placemark_style)
 
     # Positions of stations active in this hour. Needs index on 'ts'.
     pipeline = [{
@@ -65,6 +64,7 @@ def stations(dt, db, prettyprint=False):
         mark = etree.SubElement(kdoc, 'Placemark')
         mark.set('id', doc['_id'])
         etree.SubElement(mark, 'visibility').text = '1'
+        etree.SubElement(mark, 'styleUrl').text = '#stationMark'
 
         point = etree.SubElement(mark, 'Point')
         coordinates = etree.SubElement(point, 'coordinates')
