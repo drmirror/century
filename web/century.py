@@ -1,9 +1,9 @@
-from flask import Flask, render_template, request, abort, url_for
+from flask import Flask, render_template, request, abort
 import pymongo
 
 from centurylib import data, parsing
 
-db = pymongo.MongoClient().ncdc
+db = pymongo.MongoClient(port=5000).ncdc  # Assumes ssh tunnel on port 5000.
 app = Flask(__name__)
 
 
@@ -19,13 +19,12 @@ def samples():
     if not dt:
         abort(400, "Can't parse date %r" % date_str)
 
-    icon_href = url_for('static', filename='triangulation.png')
-
     # Placemarks.
-    rv = data.stations(dt, db, icon_href, prettyprint=app.debug)
+    rv = data.stations(dt, db, prettyprint=app.debug)
     print rv
     return rv
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    print 'Visit http://localhost:8000'
+    app.run(port=8000, debug=True)
