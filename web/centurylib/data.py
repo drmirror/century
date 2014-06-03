@@ -55,6 +55,10 @@ def stations(dt, db, prettyprint=False):
     cursor = db.data.aggregate(pipeline=pipeline, cursor={})
     n = 0
     for doc in cursor:
+        if not doc.get('position') or not doc['position'].get('coordinates'):
+            # Incomplete.
+            continue
+
         try:
             lon, lat = doc['position']['coordinates']
         except (IndexError, KeyError):
