@@ -34,12 +34,30 @@ def main():
     print('loading %s' % filename)
     j = convert_kml_to_geojson(filename)
     print('loaded %s features' % len(j['features']))
+
+    # Convert 3d points (!?) to 2d.
+    for f in j['features']:
+        geometry = f['geometry']
+        if geometry['type'] == 'Polygon':
+            multi_poly = [geometry['coordinates']]
+        elif geometry['type'] == 'MultiPolygon':
+            multi_poly = geometry['coordinates']
+        else:
+            raise Exception('Unknown geo type %r' % f['type'])
+
+        for poly in multi_poly:
+            for line_string in poly:
+                for triple in line_string:
+                    triple[:] = triple[:2]
+
     print('connecting to mongod')
     db = pymongo.MongoClient(port=5000).ncdc  # Assumes ssh tunnel on port 5000.
     print('dropping collection')
     db.states.drop()
     print('inserting data into "ncdc" database, "states" collection')
     db.states.insert(j['features'])
+    print('creating 2dsphere index')
+    db.states.create_index([])
     print('done')
 
 
