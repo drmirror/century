@@ -2,10 +2,12 @@
  * Convert ncdc.data collection into something flat that Monary can query.
  */
 
+print(ISODate());
+
 db.data.aggregate([
     {
         $match: {
-            ts: {$gt: ISODate("2013-12-01T00:00:00")},
+            ts: {$gt: ISODate("2012-01-01T00:00:00")},
             // Valid temperature samples.
             'airTemperature.quality': '1',
             // Positions of 0, 0 are probably invalid.
@@ -37,3 +39,4 @@ db.data.aggregate([
 
 db.flattened.ensureIndex({t: 1});
 db.flattened.ensureIndex({c: '2dsphere', w: 1});
+print(ISODate());
