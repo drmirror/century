@@ -88,11 +88,11 @@ def state_name(lat, lng, db):
 
     # Relies on data loaded and indexed by load-us-states.py.
     doc = db.states.find_one({
-        "geometry": {
-            "$geoIntersects": {
-                "$geometry": {
-                    "type": "Point",
-                    "coordinates": [lng, lat]}}}})
+        'geometry': {
+            '$geoIntersects': {
+                '$geometry': {
+                    'type': 'Point',
+                    'coordinates': [lng, lat]}}}})
 
     if doc:
         return doc['properties']['Name']
