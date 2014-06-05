@@ -27,16 +27,11 @@ def samples():
     return rv
 
 
-@app.route("/us-state.kml")
+@app.route("/us-state")
 def us_state():
     lat = float(request.args['lat'])
     lng = float(request.args['lng'])
-
-    state_name = data.state_name(lat, lng, db)
-    if state_name:
-        return open('static/states-kml/%s.kml' % state_name).read()
-    else:
-        return ''
+    return data.state_name(lat, lng, db)
 
 
 if __name__ == "__main__":

@@ -95,6 +95,6 @@ def state_name(lat, lng, db):
                     "coordinates": [lng, lat]}}}})
 
     if doc:
-        return doc['properties']['Name'].lower()
+        return doc['properties']['Name']
     else:
         return None

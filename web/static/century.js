@@ -137,14 +137,27 @@ function loadWeatherForDate(token, theDate, ge, callback) {
  * Look up which US state a lat/lng is in, and display its outline.
  */
 function showUSState(ge, lat, lng) {
-    var href = location.href + 'us-state.kml?lat=' + lat + '&lng=' + lng;
-    google.earth.fetchKml(ge, href, function(kmlObject) {
-        if (kmlObject) {
-//            $('#date').html(theDate + ':00 UTC');
-            var features = ge.getFeatures();
-            if (previousUSState) features.removeChild(previousUSState);
-            ge.getFeatures().appendChild(kmlObject);
-            previousUSState = kmlObject;
+    var apiUrl = location.href + 'us-state?lat=' + lat + '&lng=' + lng;
+    $.ajax({
+        url: apiUrl,
+        error: function () {
+            alert("error retrieving US state name")
+        },
+        success: function (stateName, status) {
+            $('#state-name').html(stateName);
+
+            var kmlUrl = (
+                location.href
+                + 'static/states-kml/' + stateName.toLowerCase() + '.kml');
+
+            google.earth.fetchKml(ge, kmlUrl, function (kmlObject) {
+                if (kmlObject) {
+                    var features = ge.getFeatures();
+                    if (previousUSState) features.removeChild(previousUSState);
+                    ge.getFeatures().appendChild(kmlObject);
+                    previousUSState = kmlObject;
+                }
+            });
         }
     });
 }
