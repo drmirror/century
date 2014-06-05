@@ -7,7 +7,6 @@ function init() {
 var datePat = new RegExp("(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2})");
 var weatherLoaderToken = 0;
 var previousStations = null;
-var running = false;
 var previousUSState = null;
 
 function isDate(s) { return datePat.test(s); }
