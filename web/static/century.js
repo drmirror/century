@@ -7,6 +7,7 @@ function init() {
 var datePat = new RegExp("(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2})");
 var weatherLoaderToken = 0;
 var previousStations = null;
+var previousPlacemark = null;
 var previousUSState = null;
 
 function isDate(s) { return datePat.test(s); }
@@ -68,6 +69,7 @@ function initCB(instance) {
                     lookAt.setRange(100 * 1000.0);  // km
                     ge.getView().setAbstractView(lookAt);
 
+                    setPlacemark(ge, lat, lng);
                     showUSState(ge, lat, lng);
                 } else {
                     alert('Geocode failed: ' + status);
@@ -131,6 +133,22 @@ function loadWeatherForDate(token, theDate, ge, callback) {
             }, 0);
         }
     });
+}
+
+/*
+ * Put a placemark at the current geolocation.
+ */
+function setPlacemark(ge, lat, lng) {
+    var features = ge.getFeatures();
+    if (previousPlacemark) {
+        features.removeChild(previousPlacemark);
+    }
+
+    previousPlacemark = ge.createPlacemark('');
+    var point = ge.createPoint('');
+    point.setLatLng(lat, lng);
+    previousPlacemark.setGeometry(point);
+    features.appendChild(previousPlacemark);
 }
 
 /*
