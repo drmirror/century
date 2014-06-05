@@ -21,7 +21,9 @@ def samples():
 
     # Placemarks.
     rv = data.stations(dt, db, prettyprint=app.debug)
-    print rv
+    if app.debug:
+        print rv
+
     return rv
 
 
