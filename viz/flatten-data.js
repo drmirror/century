@@ -29,7 +29,7 @@ db.data.aggregate([
         y: {$last: '$unwindablePosition.coordinates'},
         c: {$first: '$position.coordinates'},
         a: {$first: '$airTemperature.value'},
-        w: {$first: '$presentWeatherObservation.code'}
+        w: {$first: '$presentWeatherObservation.condition'}
     }
 }, {
     $out: 'flattened'
