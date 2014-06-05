@@ -8,6 +8,7 @@ var datePat = new RegExp("(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2})");
 var weatherLoaderToken = 0;
 var previousStations = null;
 var running = false;
+var previousUSState = null;
 
 function isDate(s) { return datePat.test(s); }
 function nextDate(s) {
@@ -55,14 +56,20 @@ function initCB(instance) {
             geocoder.geocode({address: address}, function(results, status) {
                 if (status == google.maps.GeocoderStatus.OK) {
                     var latlng = results[0].geometry.location;
-                    $('#lat').html(latlng.lat());
-                    $('#lng').html(latlng.lng());
+                    var lat = latlng.lat(),
+                        lng = latlng.lng();
+
+                    $('#lat').html(lat);
+                    $('#lng').html(lng);
+
                     var lookAt = ge.createLookAt('');
                     lookAt.setLatitude(latlng.lat());
                     lookAt.setLongitude(latlng.lng());
                     lookAt.setTilt(60);  // degrees
                     lookAt.setRange(100 * 1000.0);  // km
                     ge.getView().setAbstractView(lookAt);
+
+                    showUSState(ge, lat, lng);
                 } else {
                     alert('Geocode failed: ' + status);
                 }
@@ -123,6 +130,22 @@ function loadWeatherForDate(token, theDate, ge, callback) {
             setTimeout(function() {
                 alert("Error fetching historical data");
             }, 0);
+        }
+    });
+}
+
+/*
+ * Look up which US state a lat/lng is in, and display its outline.
+ */
+function showUSState(ge, lat, lng) {
+    var href = location.href + 'us-state.kml?lat=' + lat + '&lng=' + lng;
+    google.earth.fetchKml(ge, href, function(kmlObject) {
+        if (kmlObject) {
+//            $('#date').html(theDate + ':00 UTC');
+            var features = ge.getFeatures();
+            if (previousUSState) features.removeChild(previousUSState);
+            ge.getFeatures().appendChild(kmlObject);
+            previousUSState = kmlObject;
         }
     });
 }

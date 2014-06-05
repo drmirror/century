@@ -25,6 +25,18 @@ def samples():
     return rv
 
 
+@app.route("/us-state.kml")
+def us_state():
+    lat = float(request.args['lat'])
+    lng = float(request.args['lng'])
+
+    state_name = data.state_name(lat, lng, db)
+    if state_name:
+        return open('static/states-kml/%s.kml' % state_name).read()
+    else:
+        return ''
+
+
 if __name__ == "__main__":
     print 'Visit http://localhost:8000'
     app.run(port=8000, debug=True)

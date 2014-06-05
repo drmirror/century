@@ -81,3 +81,20 @@ def stations(dt, db, prettyprint=False):
 
     print 'stations(%s):' % dt, time.time() - start, 'seconds', n, 'docs'
     return etree.tostring(root, pretty_print=prettyprint)
+
+
+def state_name(lat, lng, db):
+    """The name of the US state containing lat, lng. Or None."""
+
+    # Relies on data loaded and indexed by load-us-states.py.
+    doc = db.states.find_one({
+        "geometry": {
+            "$geoIntersects": {
+                "$geometry": {
+                    "type": "Point",
+                    "coordinates": [lng, lat]}}}})
+
+    if doc:
+        return doc['properties']['Name'].lower()
+    else:
+        return None
