@@ -111,8 +111,8 @@ def stations(options, monary_connection, dt, hours):
 def expand_earth(x, y, temperatures):
     """Surround Earth with copies to simulate spherical wrapping.
 
-    Add earths to the left and right of earth, and vertically-flipped copies
-    above and below (A, B, E, and F):
+    Add earths to the left and right of earth (C and D), and vertically-flipped
+    copies above and below (A, B, E, and F):
 
          +---------+---------+
          |         |         |
