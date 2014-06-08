@@ -195,9 +195,6 @@ function showUSState(ge, lat, lng) {
     var apiUrl = location.href + 'us-state?lat=' + lat + '&lng=' + lng;
     $.ajax({
         url: apiUrl,
-        error: function () {
-            alert("error retrieving US state name")
-        },
         success: function (stateName, status) {
             $('#state-name').html(stateName);
 
