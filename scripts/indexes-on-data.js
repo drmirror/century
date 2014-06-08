@@ -2,6 +2,8 @@
  * Run on the 'ncdc' database.
  */
 print(ISODate());
-db.data.createIndex({'position': '2dsphere'});
+print('position 2dsphere index');
+db.data.createIndex({ts: 1, position: '2dsphere'});
+
 print('done');
 print(ISODate());
