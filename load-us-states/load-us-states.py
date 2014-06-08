@@ -57,7 +57,7 @@ def main():
     print('inserting data into "ncdc" database, "states" collection')
     db.states.insert(j['features'])
     print('creating 2dsphere index')
-    db.states.create_index([])
+    db.states.create_index([('geometry', '2dsphere')])
     print('done')
 
 
