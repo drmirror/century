@@ -9,6 +9,8 @@ var weatherLoaderToken = 0;
 var previousStations = null;
 var previousPlacemark = null;
 var previousUSState = null;
+var displayStyle = "map";  // map or info
+var lat = null, lng = null;
 
 function isDate(s) { return datePat.test(s); }
 function nextDate(s) {
@@ -56,15 +58,15 @@ function initCB(instance) {
             geocoder.geocode({address: address}, function(results, status) {
                 if (status == google.maps.GeocoderStatus.OK) {
                     var latlng = results[0].geometry.location;
-                    var lat = latlng.lat(),
-                        lng = latlng.lng();
+                    lat = latlng.lat();
+                    lng = latlng.lng();
 
                     $('#lat').html(lat);
                     $('#lng').html(lng);
 
                     var lookAt = ge.createLookAt('');
-                    lookAt.setLatitude(latlng.lat());
-                    lookAt.setLongitude(latlng.lng());
+                    lookAt.setLatitude(lat);
+                    lookAt.setLongitude(lng);
                     lookAt.setTilt(60);  // degrees
                     lookAt.setRange(100 * 1000.0);  // km
                     ge.getView().setAbstractView(lookAt);
@@ -98,6 +100,22 @@ function initCB(instance) {
             weatherLoaderToken++;
             return false;
         });
+
+        $('#displayform').submit(function() {
+            if (displayStyle == 'map') {
+                $('#map3d').hide();
+                $('#info').show();
+                $('#displaybutton').text('map');
+                displayStyle = 'info';
+            } else {
+                $('#map3d').show();
+                $('#info').hide();
+                $('#displaybutton').text('info');
+                displayStyle = 'map';
+            }
+
+            return false;
+        })
     });
 }
 
@@ -117,8 +135,8 @@ function loadWeatherCB(token, theDate, ge) {
 }
 
 function loadWeatherForDate(token, theDate, ge, callback) {
-    var href = location.href + 'samples.kml?date=' + theDate;
-    google.earth.fetchKml(ge, href, function(kmlObject) {
+    var kmlUrl = location.href + 'samples.kml?date=' + theDate;
+    google.earth.fetchKml(ge, kmlUrl, function (kmlObject) {
         if (kmlObject) {
             $('#date').html(theDate + ':00 UTC');
             var features = ge.getFeatures();
@@ -128,9 +146,28 @@ function loadWeatherForDate(token, theDate, ge, callback) {
             callback(token, theDate, ge);
         } else {
             // Defer alert to prevent deadlock in some browsers.
-            setTimeout(function() {
+            setTimeout(function () {
                 alert("Error fetching historical data");
             }, 0);
+        }
+    });
+
+    /*
+     * Get full info for nearest observation.
+     */
+    var apiUrl = (
+        location.href
+        + 'info?date=' + theDate
+        + '&lat=' + lat
+        + '&lng=' + lng);
+
+    $.ajax({
+        url: apiUrl,
+        error: function () {
+            alert("error retrieving weather observation");
+        },
+        success: function (observation) {
+            $('#info').html('<pre>' + observation + '</pre>');
         }
     });
 }

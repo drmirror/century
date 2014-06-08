@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, abort
 import pymongo
+from bson import json_util
+from flask import Flask, render_template, request, abort
 
 from centurylib import data, parsing
 
@@ -32,6 +33,20 @@ def us_state():
     lat = float(request.args['lat'])
     lng = float(request.args['lng'])
     return data.state_name(lat, lng, db)
+
+
+@app.route("/info")
+def info():
+    date_str = request.args['date']
+    dt = parsing.parse_date_str(date_str)
+    lat = float(request.args['lat'])
+    lng = float(request.args['lng'])
+    doc = data.info(lat, lng, dt, db)
+
+    if doc:
+        return json_util.dumps(doc, indent=2)
+    else:
+        return ''
 
 
 if __name__ == "__main__":

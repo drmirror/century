@@ -98,3 +98,21 @@ def state_name(lat, lng, db):
         return doc['properties']['Name']
     else:
         return None
+
+
+def info(lat, lng, dt, db):
+    """Full info about nearest weather observation, or None.
+
+    Nearest observation to a latitude, longitude, and datetime.
+    """
+    return db.data.find_one({
+        'ts': dt,
+        'position': {
+            '$near': {
+                '$geometry': {
+                    'type': 'Point',
+                    'coordinates': [lng, lat]
+                }
+            }
+        }
+    })
