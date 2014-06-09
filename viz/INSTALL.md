@@ -107,4 +107,4 @@ Download from http://ffmpegmac.net/
 For instructions:
 
     cdvirtualenv century
-    python -m vz.plotweather --help
+    python -m viz.plotweather --help
