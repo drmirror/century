@@ -132,6 +132,9 @@ public class DataLoader {
     
     private static abstract class Loader extends Thread {
         
+        private int numSplits = 1;
+        private int mySplit = 0;
+        
         private int batchSize = 10000;
         private boolean useBulk = true;
         private RecordParser parser = new RecordParser();
@@ -179,6 +182,15 @@ public class DataLoader {
         }
         
         protected void loadFile (String filename) {
+            if (filename.matches(".*?-[0-9]-[0-9]$")) {
+                int length = filename.length();
+                numSplits = Integer.parseInt(filename.substring(length-1));
+                mySplit = Integer.parseInt(filename.substring(length-3, length-2));
+                filename = filename.substring(0,length-4);
+            } else {
+                numSplits = 1;
+                mySplit = 0;
+            }
             try {
                 BufferedReader in = filename.endsWith(".gz")
                     ? new BufferedReader (
@@ -186,10 +198,12 @@ public class DataLoader {
                               new GZIPInputStream (
                                   new FileInputStream (filename))))
                     : new BufferedReader (new FileReader(filename));
+                int i=0;          
                 while (true) {
                     String line = in.readLine();
                     if (line == null) break;
-                    insert(line);
+                    if (i % numSplits == mySplit) insert(line);
+                    i = (i+1) % numSplits;
                 }
                 in.close();
             } catch (Exception ex) {
@@ -257,14 +271,28 @@ public class DataLoader {
     
     private static class RandomFilePool extends FilePool {
         
-        // The last file in the list is about 100 times bigger than the others.
-        // This option makes this file the first one to be given to a worker
-        // thread, to achieve maximum parallelism on that one.
+        // The last file in the list is about 100 times larger than the other ones.
+        // This flag indicates that this file should be processed first, to achieve
+        // maximum parallelism on that one.
         private boolean lastFileFirst = false;
         
-        public RandomFilePool (String dir, List<String> files, boolean lastFileFirst) {
+        public RandomFilePool (String dir, List<String> files, int numThreads) {
             super (dir, files);
-            this.lastFileFirst = lastFileFirst;
+            if (numThreads > 1) {
+                lastFileFirst = true;
+                splitShips (numThreads);
+            }
+        }
+        
+        private void splitShips (int numThreads) {
+            int numSplits = Math.min(numThreads, 8);
+            String shipFile = files.get(files.size()-1);
+            if (shipFile.startsWith("999999-99999-")) {
+                files.remove(files.size()-1);
+                for (int i=0; i<numSplits; i++) {
+                    files.add(shipFile + "-" + i + "-" + numSplits);
+                }
+            }
         }
         
         public synchronized String getFile() {
@@ -272,13 +300,16 @@ public class DataLoader {
                 String result = null;
                 if (lastFileFirst) {
                     result = files.get(files.size()-1);
-                    files.remove (files.size()-1);
-                    lastFileFirst = false;
-                } else {
-                    int index = (int)(Math.random() * (double)files.size());
-                    result = files.get(index);
-                    files.remove(index);
+                    if (result.startsWith("999999-99999-")) {
+                        files.remove (files.size()-1);
+                        return dir + "/" + result;
+                    } else {
+                        lastFileFirst = false;
+                    }
                 }
+                int index = (int)(Math.random() * (double)files.size());
+                result = files.get(index);
+                files.remove(index);
                 return dir + "/" + result;
             } else {
                 return null;
@@ -313,14 +344,14 @@ public class DataLoader {
 
         //MongoClientOptions options = MongoClientOptions.builder()
         //  .writeConcern(WriteConcern.UNACKNOWLEDGED).build();
-        MongoClient c = new MongoClient("century-one");
+        MongoClient c = new MongoClient("localhost");
 
         File dir = new File(dirname);
         String[] flist = dir.list();
         List<String> files = new LinkedList<String>(Arrays.asList(flist));
         Collections.sort(files);
 
-        FilePool pool = new RandomFilePool(dirname, files, numThreads > 1);
+        FilePool pool = new RandomFilePool(dirname, files, numThreads);
         List<Loader> loaders = new ArrayList<Loader>();
         for (int i=0; i<numThreads; i++) {
             loaders.add(new PoolLoader(c, pool, batchSize));

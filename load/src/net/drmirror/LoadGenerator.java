@@ -5,10 +5,15 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 
 import com.beust.jcommander.IStringConverter;
@@ -57,22 +62,17 @@ public class LoadGenerator extends Thread {
     }
     
     @Parameter(names = "--mongoHost")
-    private static String mongoHost = "century-one";
+    private static String mongoHost = "localhost";
+
+    private static Object clientLock = new Object();
     private static MongoClient mongoClient;
     
     private static final double NANOS_PER_MILLI = 1000000.0;
     
-    static {
-        try {
-            mongoClient = new MongoClient(mongoHost);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            System.exit(1);
-        }
-    }
+    // maps years to the ids of stations that were active in that year
+    private static Map<Integer,List<String>> stations;
+    private static Object stationLock = new Object();
     
-    private List<String> stations = new ArrayList<String>();
-
     public static SimpleDateFormat dateFormat = new SimpleDateFormat ("yyyyMMdd");
     
     @Parameter(names="--stMin")
@@ -104,6 +104,9 @@ public class LoadGenerator extends Thread {
     
     @Parameter(names="--statDelay")
     private long statDelayMillis = 5000;
+
+    @Parameter(names="--showQueries")
+    private boolean showQueries = false;
     
     // statistics
     
@@ -122,6 +125,7 @@ public class LoadGenerator extends Thread {
             this.tsMin = dateFormat.parse("20130101");
             this.tsMax = dateFormat.parse("20140101");
             this.reportStats = true;
+            df.setCalendar(Calendar.getInstance(TimeZone.getTimeZone("UTC")));
         } catch (ParseException ex) {
             throw new RuntimeException (ex);
         }
@@ -131,30 +135,69 @@ public class LoadGenerator extends Thread {
         this();
         this.reportStats = reportStats;
     }
-    
+
+    private static MongoClient getMongoClient() {
+        synchronized (clientLock) {
+            if (mongoClient == null) {
+                try {
+                    mongoClient = new MongoClient(mongoHost);
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+            return mongoClient;
+        }
+    }
+
     private void initConnection() {
-        db = mongoClient.getDB("ncdc");
+        db = getMongoClient().getDB("ncdc");
         data = db.getCollection("data");
     }
-
-    public void initStations() {
-        stations = new ArrayList<String>();
+    
+    private List<String> getStationsForYear (int year) {
+        synchronized (stationLock) {
+            if (stations == null) initStations();
+            return stations.get(year);
+        }
+    }
+    
+    private static void initStations() {
+        stations = new HashMap<Integer,List<String>>();
+        DB db = getMongoClient().getDB("ncdc");
         DBCollection station = db.getCollection("station");
-        DBCursor c = station.find(new BasicDBObject("begin", 
-                                    new BasicDBObject ("$lte", tsMax))
-                                  .append("end",
-                                      new BasicDBObject ("$gte", tsMin)))
-                            .sort(new BasicDBObject("st", 1));
+        DBCursor c = station.find();
+        Calendar cal_begin = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        Calendar cal_end = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         for (DBObject o : c) {
-            String st = (String)o.get("st");
-            if (   st.compareTo(stMin) >= 0
-                && st.compareTo(stMax) < 0) {
-                stations.add(st);
+            BasicDBObject x = (BasicDBObject)o;
+            String st = x.getString("st");
+            Date begin = x.getDate("begin");
+            Date end = x.getDate("end");
+            if (begin == null || end == null) continue;
+            cal_begin.setTime(begin);
+            cal_end.setTime(end);
+            int year_begin = cal_begin.get(Calendar.YEAR);
+            int year_end = cal_end.get(Calendar.YEAR);
+            for (int y = year_begin+1; y < year_end; y++) {
+                List<String> stx = stations.get(y);
+                if (stx == null) {
+                    stx = new ArrayList<String>();
+                    stations.put(y, stx);
+                }
+                stx.add(st);
             }
         }
-        // System.out.printf("%d stations\n", stations.size());
     }
-
+    
+    private static void printStations() {
+        List<Integer> years = new ArrayList<Integer>(stations.keySet());
+        Collections.sort(years);
+        for (int year : years) {
+            System.out.printf("%d %d stations\n", year, stations.get(year).size());
+        }
+    }
+    
+    
     private Calendar calendar = new GregorianCalendar (TimeZone.getTimeZone("UTC"));
     
     private static class Range<T> { public T min, max; }
@@ -198,13 +241,30 @@ public class LoadGenerator extends Thread {
         return result;
     }
     
-    private Range<String> getStRange() {
+    private Range<String> getStRange(Date min, Date max) {
         Range<String> result = new Range<String>();
         if (stInterval == StationInterval.ALL) {
             return null;
-        }    
-        int stationIndex = (int)(Math.random() * stations.size());
-        String station = stations.get(stationIndex);
+        }
+        List<String> candidates = null;
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        cal.setTime(min);
+        int firstYear = cal.get(Calendar.YEAR);
+        cal.setTime(max);
+        int lastYear = cal.get(Calendar.YEAR);
+        if (firstYear == lastYear) {
+            candidates = stations.get(firstYear);
+        } else {
+            Set<String> candidateSet = new HashSet<String>();
+            for (int y = firstYear; y <= lastYear; y++) {
+                List<String> l = stations.get(y);
+                if (l != null) 
+                    candidateSet.addAll (l);
+            }
+            candidates = new ArrayList<String>(candidateSet);
+        }
+        int stationIndex = (int)(Math.random() * candidates.size());
+        String station = candidates.get(stationIndex);
         if (stInterval == StationInterval.REGION) {
             result.min = station.substring(0, 3) + "0000";
             result.max = station.substring(0, 2) + (char)(station.charAt(2)+1) + "0000";
@@ -218,15 +278,17 @@ public class LoadGenerator extends Thread {
     private DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     
     private long query() {
-        Range<String> stRange = getStRange();
         Range<Date> tsRange = getTsRange();
+        Range<String> stRange = getStRange(tsRange.min, tsRange.max);
 
-//        if (stRange == null) {
-//            System.out.print("st:     ALL        ");
-//        } else {
-//            System.out.print("st: " + stRange.min + " " + stRange.max + "  ");
-//        }
-//        System.out.print("ts: " + df.format(tsRange.min) + "  " + df.format(tsRange.max));
+        if (showQueries) {
+            if (stRange == null) {
+                System.out.print("st:     ALL        ");
+            } else {
+                System.out.print("st: " + stRange.min + " " + stRange.max + "  ");
+            }
+            System.out.print("ts: " + df.format(tsRange.min) + "  " + df.format(tsRange.max));
+        }
         
         BasicDBObject query = tsRange.min.equals(tsRange.max) 
                             ? new BasicDBObject("ts", tsRange.min)
@@ -244,7 +306,7 @@ public class LoadGenerator extends Thread {
         List<DBObject> x = c.toArray(); // drain cursor
         long endTime = System.nanoTime();
 
-//        System.out.println("  " + c.length());
+        if (showQueries) System.out.println("  " + c.length());
         
         return endTime - startTime;
     }
@@ -334,14 +396,15 @@ public class LoadGenerator extends Thread {
     private boolean reportStats = false;
     
     public void run() {
-        initConnection();
-        initStations();
         if (reportStats) {
             StatReporter sr = new StatReporter();
             sr.start();
         }
         while (true) {
-            updateStats (query());
+            if (reportStats)
+                updateStats (query());
+            else
+                query();
             double delay =      (queryDelayMillis - queryJitterMillis)
                           + 2 * (queryJitterMillis * Math.random());
             sl_e_e_p((long)delay);
@@ -352,12 +415,15 @@ public class LoadGenerator extends Thread {
         LoadGenerator g = new LoadGenerator(true);
         JCommander jc = new JCommander(g);
         jc.parse(args);
+        initStations();
+        g.initConnection();
         
         List<LoadGenerator> others = new ArrayList<LoadGenerator>();
         for (int i=1; i<numClients; i++) {
             LoadGenerator l = new LoadGenerator(false);
             JCommander c = new JCommander(l);
             c.parse(args);
+            l.initConnection();
             others.add (l);
         }
         
