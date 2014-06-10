@@ -168,6 +168,14 @@ function loadWeatherForDate(token, theDate, ge, callback) {
                 alert("error retrieving weather observation");
             },
             success: function (observation) {
+                var condition = '';
+                if (observation.presentWeatherObservation
+                    && observation.presentWeatherObservation.condition)
+                {
+                    var code = observation.presentWeatherObservation.condition;
+                    condition = weatherCodes[code];
+                }
+                $('#condition').html('<pre>' + condition + '</pre>');
                 $('#info').html('<pre>' + observation + '</pre>');
             }
         });

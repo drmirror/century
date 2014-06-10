@@ -4,6 +4,7 @@
     <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
     <script src="//www.google.com/jsapi?key=ABQIAAAA5El50zA4PeDTEMlv-sXFfRSsTL4WIgxhMZ0ZK_kHjwHeQuOD4xTdBhxbkZWuzyYTVeclkwYHpb17ZQ"></script>
     <script src="{{ url_for('static', filename='jquery-2.1.0.js') }}"></script>
+    <script src="{{ url_for('static', filename='weather_codes.js') }}"></script>
     <script src="{{ url_for('static', filename='century.js') }}"></script>
 </head>
 <body>
@@ -25,6 +26,7 @@
         <button type="submit">Stop</button>
     </form>
     <span id="state-name">&nbsp;</span>
+    <span id="condition">&nbsp;</span>
     <form id="displayform">
         <button type="submit" id="displaybutton">Info</button>
     </form>
