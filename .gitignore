@@ -1,1 +1,4 @@
 *.pyc
+tmp/
+callgrind.out
+*.mp4

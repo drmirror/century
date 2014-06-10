@@ -1,14 +1,23 @@
 import datetime
 import time
 
-from fastkml import kml, Document
-from fastkml.geometry import Point
-
-from centurylib import triangles
-from centurylib.groundoverlay import GroundOverlay
+from bson import SON
+from lxml import etree
 
 
-def stations(dt, db, icon_href, prettyprint=False):
+def cent_to_fahr(c):
+    return 32 + 9 * c / 5
+
+
+placemark_style = etree.Element('Style')
+placemark_style.set('id', 'stationMark')
+icon_style = etree.SubElement(placemark_style, 'IconStyle')
+icon = etree.SubElement(icon_style, 'Icon')
+href = etree.SubElement(icon, 'href')
+href.text = '/static/icon.png'
+
+
+def stations(dt, db, prettyprint=False):
     """The stations active at one time.
 
     Takes a datetime and pymongo database. Returns list of KML Placemarks.
@@ -20,8 +29,12 @@ def stations(dt, db, icon_href, prettyprint=False):
 
     next_hour = dt + datetime.timedelta(hours=1)
 
-    k = kml.KML(ns='')
-    kdoc = Document(name='stations')
+    root = etree.Element('kml')
+    root.set('xmlns', 'http://www.opengis.net/kml/2.2')
+    kdoc = etree.SubElement(root, 'Document')
+    etree.SubElement(kdoc, 'name').text = 'stations'
+    etree.SubElement(kdoc, 'visibility').text = '1'
+    kdoc.append(placemark_style)
 
     # Positions of stations active in this hour. Needs index on 'ts'.
     pipeline = [{
@@ -43,27 +56,72 @@ def stations(dt, db, icon_href, prettyprint=False):
     cursor = db.data.aggregate(pipeline=pipeline, cursor={})
     n = 0
     for doc in cursor:
-        station_mark = kml.Placemark(ns='', id=doc['_id'], name=doc['_id'])
-        n += 1
-        # GeoJSON and KML agree on the order: (longitude, latitude).
-        try:
-            station_mark.geometry = Point(*doc['position']['coordinates'])
-        except (TypeError, KeyError):
+        if not doc.get('position') or not doc['position'].get('coordinates'):
             # Incomplete.
-            pass
+            continue
 
-        kdoc.append(station_mark)
+        try:
+            lon, lat = doc['position']['coordinates']
+        except (IndexError, KeyError):
+            # Incomplete.
+            continue
 
-    # TODO: horribly inefficient.
-    kml_triangles = triangles.triangles(dt, db)
-    for t in kml_triangles:
-        kdoc.append(t)
+        mark = etree.SubElement(kdoc, 'Placemark')
+        mark.set('id', doc['_id'])
+        etree.SubElement(mark, 'visibility').text = '1'
+        etree.SubElement(mark, 'styleUrl').text = '#stationMark'
 
-    overlay = GroundOverlay(ns='')
-    overlay.geometry = [90, -90, 180, -180, 0]
-    overlay.icon_href = icon_href
-    kdoc.append(overlay)  # Fails with upstream fastkml, need to update it.
+        point = etree.SubElement(mark, 'Point')
+        coordinates = etree.SubElement(point, 'coordinates')
+        coordinates.text = '%f,%f' % (lon, lat)
+
+        name = str(int(cent_to_fahr(doc['airTemperature']['value'])))
+        etree.SubElement(mark, 'name').text = name
+
+        n += 1
 
     print 'stations(%s):' % dt, time.time() - start, 'seconds', n, 'docs'
-    k.append(kdoc)
-    return k.to_string(prettyprint=prettyprint)
+    return etree.tostring(root, pretty_print=prettyprint)
+
+
+def state_name(lat, lng, db):
+    """The name of the US state containing lat, lng. Or None."""
+
+    # Relies on data loaded and indexed by load-us-states.py.
+    doc = db.states.find_one({
+        'geometry': {
+            '$geoIntersects': {
+                '$geometry': {
+                    'type': 'Point',
+                    'coordinates': [lng, lat]}}}})
+
+    if doc:
+        return doc['properties']['Name']
+    else:
+        return None
+
+
+def info(lat, lng, dt, db):
+    """Full info about nearest weather observation, or None.
+
+    Nearest observation to a latitude, longitude, and datetime.
+    """
+    # Use "as_class=SON" so the JSON-encoded output preserves key order.
+    # Interestingly, MongoDB wants to use the "position" 2dsphere index,
+    # which is not optimal, so we hint the (ts, position) index. In case
+    # it's still slow, we use the new max_time_ms feature to abort after
+    # 10 seconds.
+    return list(db.data.find({
+        'ts': dt,
+        'position': {
+            '$near': {
+                '$geometry': {
+                    'type': 'Point',
+                    'coordinates': [lng, lat]
+                }
+            }
+        }
+    }, as_class=SON).hint([
+        ('ts', 1),
+        ('position', '2dsphere')
+    ]).limit(-1).max_time_ms(10000))[0]

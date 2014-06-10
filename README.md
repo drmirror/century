@@ -6,8 +6,19 @@ This is a project to store a century's worth of weather data in MongoDB and show
 Loading data
 ============
 
-TODO: loading instructions
---------------------------
+US states
+---------
+
+Install the ogr2ogr tool, a [Mac OS X build is available here][1].
+
+[1]: http://www.kyngchaos.com/files/software/frameworks/GDAL_Complete-1.11.dmg
+
+Run `load-us-states/load-us-states.py` to insert US State geometry into the
+`ncdc.states` collection.
+The script assumes a mongod is running on port 5000.
+
+TODO: other loading instructions
+--------------------------------
 
 Indexes
 -------

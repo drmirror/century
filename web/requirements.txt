@@ -1,6 +1,3 @@
-# This assumes you're on Enthought Canopy Express's Python distribution,
-# which includes numpy, scipy, matplotlib, and others.
 flask
 pymongo
 lxml
-fastkml
