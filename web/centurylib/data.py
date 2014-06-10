@@ -1,6 +1,7 @@
 import datetime
 import time
 
+from bson import SON
 from lxml import etree
 
 
@@ -105,7 +106,12 @@ def info(lat, lng, dt, db):
 
     Nearest observation to a latitude, longitude, and datetime.
     """
-    return db.data.find_one({
+    # Use "as_class=SON" so the JSON-encoded output preserves key order.
+    # Interestingly, MongoDB wants to use the "position" 2dsphere index,
+    # which is not optimal, so we hint the (ts, position) index. In case
+    # it's still slow, we use the new max_time_ms feature to abort after
+    # 10 seconds.
+    return list(db.data.find({
         'ts': dt,
         'position': {
             '$near': {
@@ -115,4 +121,7 @@ def info(lat, lng, dt, db):
                 }
             }
         }
-    })
+    }, as_class=SON).hint([
+        ('ts', 1),
+        ('position', '2dsphere')
+    ]).limit(-1).max_time_ms(10000))[0]

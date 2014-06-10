@@ -151,27 +151,27 @@ function loadWeatherForDate(token, theDate, ge, callback) {
             }, 0);
         }
     });
-//
-//    if (lat && lng) {
-//        /*
-//         * Get full info for nearest observation.
-//         */
-//        var apiUrl = (
-//            location.href
-//            + 'info?date=' + theDate
-//            + '&lat=' + lat
-//            + '&lng=' + lng);
-//
-//        $.ajax({
-//            url: apiUrl,
-//            error: function () {
-//                alert("error retrieving weather observation");
-//            },
-//            success: function (observation) {
-//                $('#info').html('<pre>' + observation + '</pre>');
-//            }
-//        });
-//    }
+
+    if (lat && lng) {
+        /*
+         * Get full info for nearest observation.
+         */
+        var apiUrl = (
+            location.href
+            + 'info?date=' + theDate
+            + '&lat=' + lat
+            + '&lng=' + lng);
+
+        $.ajax({
+            url: apiUrl,
+            error: function () {
+                alert("error retrieving weather observation");
+            },
+            success: function (observation) {
+                $('#info').html('<pre>' + observation + '</pre>');
+            }
+        });
+    }
 }
 
 /*
