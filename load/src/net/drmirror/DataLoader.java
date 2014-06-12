@@ -34,11 +34,11 @@ public class DataLoader {
         private SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmm");
 
         private Parser addParser = new Parser.MasterParser();
-        
+
         public RecordParser() {
             df.setTimeZone(TimeZone.getTimeZone("UTC"));
         }
-        
+
         public BasicDBObject parseRecord (String line) {
             String usaf = line.substring(4,10);
             String wban = line.substring(10,15);
@@ -53,14 +53,14 @@ public class DataLoader {
             Integer lat = parseInt(latStr);
             String lonStr = line.substring(34,41);
             Integer lon = parseInt(lonStr);
-            
+
             String type = line.substring(41,46).trim();
             String elevStr = line.substring(46,51);
             int elev = parseInt(elevStr);
-            
+
             String call = line.substring(51,56).trim();
             String qc = line.substring(56,60);
-            
+
             String tempStr = line.substring(87,92);
             String tempQuality = line.substring(92,93);
             double temp = (double)parseInt(tempStr) / 10.0;
@@ -72,13 +72,13 @@ public class DataLoader {
             String pressStr = line.substring(99,104);
             String pressQuality = line.substring(104,105);
             double press = (double)parseInt(pressStr) / 10.0;
-            
+
             int wd = parseInt(line.substring(60,63));
             String wdq = line.substring(63,64);
             String wt = line.substring(64,65);
             double ws = (double)parseInt(line.substring(65,69)) / 10.0;
             String wsq = line.substring(69,70);
-            
+
             int skyh = parseInt(line.substring(70,75));
             String skyq = line.substring(75,76);
             String skyd = line.substring(76,77);
@@ -88,7 +88,7 @@ public class DataLoader {
             String visdq = line.substring(84,85);
             String visv = line.substring(85,86);
             String visvq = line.substring(86,87);
-            
+
             String st = generateStationId(usaf, wban, latStr, lonStr);
             BasicDBObject d = new BasicDBObject("st", st);
             d.append("ts", ts);
@@ -124,28 +124,28 @@ public class DataLoader {
             
             if (line.length() > 108 && line.substring(105,108).equals("ADD"))
                 addParser.parse(line, 108, d);
-            
+
             return d;
         }
-             
+
     }
-    
+
     private static abstract class Loader extends Thread {
-        
+
         private int numSplits = 1;
         private int mySplit = 0;
-        
+
         private int batchSize = 10000;
         private boolean useBulk = true;
         private RecordParser parser = new RecordParser();
-        
+
         private List<BasicDBObject> buffer;
         protected DBCollection data;
 
         public Loader (MongoClient client) {
             this (client, 1000);
         }
-        
+
         public Loader (MongoClient client, int batchSize) {
             this.batchSize = batchSize;
             DB db = client.getDB("ncdc");
@@ -161,14 +161,14 @@ public class DataLoader {
                 buffer.clear();
             }
         }
-        
+
         public void finish() {
             if (buffer.size() > 0) {
                 if (useBulk) bulkInsert(data, buffer); else plainInsert(data, buffer);
                 buffer.clear();
             }
         }
-        
+
         private void bulkInsert (DBCollection data, List<BasicDBObject> buffer) {
             BulkWriteOperation op = data.initializeUnorderedBulkOperation();
             for (BasicDBObject o : buffer) {
@@ -180,7 +180,7 @@ public class DataLoader {
         private void plainInsert (DBCollection data, List<BasicDBObject> buffer) {
             data.insert (buffer.toArray(new BasicDBObject[]{}));
         }
-        
+
         protected void loadFile (String filename) {
             if (filename.matches(".*?-[0-9]-[0-9]$")) {
                 int length = filename.length();
@@ -212,20 +212,20 @@ public class DataLoader {
         }
 
     }
-    
+
     private static class PoolLoader extends Loader {
 
         private FilePool pool = null;
-        
+
         public PoolLoader (MongoClient client, FilePool pool) {
             this (client, pool, 1000);
         }
-        
+
         public PoolLoader (MongoClient client, FilePool pool, int batchSize) {
             super(client, batchSize);
             this.pool = pool;
         }
-        
+
         @Override
         public void run() {
             while (true) {
@@ -237,11 +237,11 @@ public class DataLoader {
             finish();
         }
     }
-    
+
     private static class FileLoader extends Loader {
-     
+
         private String filename;
-        
+
         public FileLoader (MongoClient c, String filename, int batchSize) {
             super (c, batchSize);
             this.filename = filename;
@@ -252,30 +252,30 @@ public class DataLoader {
             loadFile (filename);
             finish();
         }
-        
+
     }
-    
+
     private static abstract class FilePool {
-        
+
         protected String dir;
         protected List<String> files;
-        
+
         protected FilePool (String dir, List<String> files) {
             this.dir = dir;
             this.files = new LinkedList<String>(files);
         }
-        
+
         public abstract String getFile();
-        
+
     }
-    
+
     private static class RandomFilePool extends FilePool {
-        
+
         // The last file in the list is about 100 times larger than the other ones.
         // This flag indicates that this file should be processed first, to achieve
         // maximum parallelism on that one.
         private boolean lastFileFirst = false;
-        
+
         public RandomFilePool (String dir, List<String> files, int numThreads) {
             super (dir, files);
             if (numThreads > 1) {
@@ -283,7 +283,7 @@ public class DataLoader {
                 splitShips (numThreads);
             }
         }
-        
+
         private void splitShips (int numThreads) {
             int numSplits = Math.min(numThreads, 8);
             String shipFile = files.get(files.size()-1);
@@ -294,7 +294,7 @@ public class DataLoader {
                 }
             }
         }
-        
+
         public synchronized String getFile() {
             if (!files.isEmpty()) {
                 String result = null;
@@ -315,16 +315,16 @@ public class DataLoader {
                 return null;
             }
         }
-        
+
     }
-    
-    
+
+
     private static class SequentialFilePool extends FilePool {
-        
+
         public SequentialFilePool (String dir, List<String> files, boolean notUsed) {
             super (dir, files);
         }
-        
+
         public synchronized String getFile() {
             if (!files.isEmpty()) {
                 return dir + "/" + files.remove(0);
@@ -332,10 +332,10 @@ public class DataLoader {
                 return null;
             }
         }
-        
+
     }
-    
-    
+
+
     public static void main (String[] args) throws Exception {
 
         String dirname = args.length > 0 ? args[0] : ".";
@@ -356,12 +356,12 @@ public class DataLoader {
         for (int i=0; i<numThreads; i++) {
             loaders.add(new PoolLoader(c, pool, batchSize));
         }
-        
+
         for (Loader l : loaders) l.start();
         for (Loader l : loaders) l.join();
-        
+
         c.close();
-        
+
     }
-    
+
 }
