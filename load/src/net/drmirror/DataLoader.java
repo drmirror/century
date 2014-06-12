@@ -95,33 +95,33 @@ public class DataLoader {
             if (!"999999".equals(usaf)) d.append("usaf",usaf);
             if (!"99999".equals(wban))  d.append("wban",wban);
             BasicDBObject p = createPoint(lon, lat);
-            if (p != null) d.append ("position", p);
-            d.append("elevation", elev);
-            d.append("callLetters", call);
-            d.append("qualityControlProcess", qc);
-            
-            d.append("dataSource", source).append ("type", type);
-            
-            d.append("airTemperature", new BasicDBObject("value",temp).append("quality",tempQuality))
-              .append("dewPoint", new BasicDBObject("value",dew).append("quality",dewQuality))
-              .append("pressure", new BasicDBObject("value",press).append("quality", pressQuality))
-              .append("wind", new BasicDBObject("direction", 
-                                 new BasicDBObject("angle", wd).append("quality",wdq))
-                              .append("type",wt)
-                              .append("speed",new BasicDBObject ("rate",ws)
-                                                    .append("quality",wsq)))
-              .append("visibility", new BasicDBObject("distance",
-                                     new BasicDBObject ("value", visd)
-                                         . append ("quality", visdq))
-                                    .append ("variability",
-                                       new BasicDBObject("value", visv)
-                                         .append("quality", visvq)))
-              .append("skyCondition", new BasicDBObject("ceilingHeight",
-                                        new BasicDBObject("value", skyh)
-                                         .append("quality", skyq)
-                                         .append("determination", skyd))
-                                      .append("cavok", skyc));
-            
+            if (p != null) d.append ("pos", p);
+            d.append("elev", elev);
+            d.append("cL", call);
+            d.append("qCP", qc);
+
+            d.append("dS", source).append ("t", type);
+
+            d.append("aT", new BasicDBObject("v",temp).append("q",tempQuality))
+              .append("dP", new BasicDBObject("v",dew).append("q",dewQuality))
+              .append("pres", new BasicDBObject("v",press).append("q", pressQuality))
+              .append("wnd", new BasicDBObject("dir",
+                                 new BasicDBObject("a", wd).append("q",wdq))
+                              .append("t",wt)
+                              .append("s",new BasicDBObject ("r",ws)
+                                                    .append("q",wsq)))
+              .append("vis", new BasicDBObject("d",
+                                     new BasicDBObject ("v", visd)
+                                         . append ("q", visdq))
+                                    .append ("v",
+                                       new BasicDBObject("v", visv)
+                                         .append("q", visvq)))
+              .append("sCond", new BasicDBObject("cH",
+                                        new BasicDBObject("v", skyh)
+                                         .append("q", skyq)
+                                         .append("d", skyd))
+                                      .append("c", skyc));
+
             if (line.length() > 108 && line.substring(105,108).equals("ADD"))
                 addParser.parse(line, 108, d);
 
@@ -339,8 +339,8 @@ public class DataLoader {
     public static void main (String[] args) throws Exception {
 
         String dirname = args.length > 0 ? args[0] : ".";
-        int numThreads = args.length > 1 ? Integer.parseInt(args[1]) : 1;
-        int batchSize  = args.length > 2 ? Integer.parseInt(args[2]) : 1000;
+        int numThreads = args.length > 1 ? Integer.parseInt(args[1]) : 8;
+        int batchSize  = args.length > 2 ? Integer.parseInt(args[2]) : 200;
 
         //MongoClientOptions options = MongoClientOptions.builder()
         //  .writeConcern(WriteConcern.UNACKNOWLEDGED).build();
