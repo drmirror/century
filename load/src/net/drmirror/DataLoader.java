@@ -21,6 +21,8 @@ import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 
 import com.mongodb.BasicDBObject;
+import com.mongodb.BulkWriteError;
+import com.mongodb.BulkWriteException;
 import com.mongodb.BulkWriteOperation;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -90,10 +92,10 @@ public class DataLoader {
             String visvq = line.substring(86,87);
             
             String st = generateStationId(usaf, wban, latStr, lonStr);
-            BasicDBObject d = new BasicDBObject("st", st);
-            d.append("ts", ts);
-            if (!"999999".equals(usaf)) d.append("usaf",usaf);
-            if (!"99999".equals(wban))  d.append("wban",wban);
+            BasicDBObject d = new BasicDBObject();
+            d.append("_id", new BasicDBObject("st", st).append("ts", ts));
+            if (!"999999".equals(usaf)) { d.append("usaf",usaf); }
+            if (!"99999".equals(wban))  { d.append("wban",wban); }
             BasicDBObject p = createPoint(lon, lat);
             if (p != null) d.append ("position", p);
             d.append("elevation", elev);
@@ -140,9 +142,10 @@ public class DataLoader {
         private RecordParser parser = new RecordParser();
         
         private List<BasicDBObject> buffer;
+        private List<BasicDBObject> duplicates;
         protected DBCollection data;
 
-        public Loader (MongoClient client) {
+        public Loader(MongoClient client) {
             this (client, 1000);
         }
         
@@ -151,14 +154,27 @@ public class DataLoader {
             DB db = client.getDB("ncdc");
             data = db.getCollection("data");
             buffer = new ArrayList<BasicDBObject>(batchSize);
+            duplicates = new ArrayList<BasicDBObject>();
         }
 
         public void insert (String record) {
             BasicDBObject d = parser.parseRecord(record);
             buffer.add(d);
             if (buffer.size() >= batchSize) {
-                if (useBulk) bulkInsert(data, buffer); else plainInsert(data, buffer);
-                buffer.clear();
+            	try {
+            		if (useBulk) bulkInsert(data, buffer); else plainInsert(data, buffer);
+            	} catch (BulkWriteException ex) {
+            		List<BulkWriteError> errors = ex.getWriteErrors();
+            		for(BulkWriteError error : errors) {
+            			if (error.getCode() == 11000) {
+            				duplicates.add(buffer.get(error.getIndex()));
+            			} else {
+            				throw ex;
+            			}
+            		}
+            	} finally {
+            		buffer.clear();
+            	}
             }
         }
         
@@ -166,6 +182,7 @@ public class DataLoader {
             if (buffer.size() > 0) {
                 if (useBulk) bulkInsert(data, buffer); else plainInsert(data, buffer);
                 buffer.clear();
+                System.out.println("Duplicates: " + duplicates.size());
             }
         }
         
@@ -217,11 +234,11 @@ public class DataLoader {
 
         private FilePool pool = null;
         
-        public PoolLoader (MongoClient client, FilePool pool) {
+        public PoolLoader(MongoClient client, FilePool pool) {
             this (client, pool, 1000);
         }
         
-        public PoolLoader (MongoClient client, FilePool pool, int batchSize) {
+        public PoolLoader(MongoClient client, FilePool pool, int batchSize) {
             super(client, batchSize);
             this.pool = pool;
         }
@@ -339,8 +356,8 @@ public class DataLoader {
     public static void main (String[] args) throws Exception {
 
         String dirname = args.length > 0 ? args[0] : ".";
-        int numThreads = args.length > 1 ? Integer.parseInt(args[1]) : 1;
-        int batchSize  = args.length > 2 ? Integer.parseInt(args[2]) : 1000;
+        int numThreads = args.length > 1 ? Integer.parseInt(args[1]) : 8;
+        int batchSize  = args.length > 2 ? Integer.parseInt(args[2]) : 400;
 
         //MongoClientOptions options = MongoClientOptions.builder()
         //  .writeConcern(WriteConcern.UNACKNOWLEDGED).build();
@@ -361,7 +378,6 @@ public class DataLoader {
         for (Loader l : loaders) l.join();
         
         c.close();
-        
     }
     
 }
