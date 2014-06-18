@@ -18,6 +18,8 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import com.mongodb.BasicDBObject;
@@ -181,12 +183,15 @@ public class DataLoader {
             data.insert (buffer.toArray(new BasicDBObject[]{}));
         }
         
+        private static Pattern splitPattern = Pattern.compile ("=([0-9]+)=([0-9]+)$");
+        
         protected void loadFile (String filename) {
-            if (filename.matches(".*?-[0-9]-[0-9]$")) {
+            Matcher m = splitPattern.matcher(filename);
+            if (m.find()) {
                 int length = filename.length();
-                numSplits = Integer.parseInt(filename.substring(length-1));
-                mySplit = Integer.parseInt(filename.substring(length-3, length-2));
-                filename = filename.substring(0,length-4);
+                numSplits = Integer.parseInt(m.group(2));
+                mySplit = Integer.parseInt(m.group(1));
+                filename = filename.substring(0,length-m.group().length());
             } else {
                 numSplits = 1;
                 mySplit = 0;
@@ -233,6 +238,7 @@ public class DataLoader {
                 if (filename == null) break;
                 System.out.println(filename);
                 loadFile (filename);
+                System.out.println(filename + " ...done");
             }
             finish();
         }
@@ -285,12 +291,12 @@ public class DataLoader {
         }
         
         private void splitShips (int numThreads) {
-            int numSplits = Math.min(numThreads, 8);
+            int numSplits = Math.min(numThreads, 16);
             String shipFile = files.get(files.size()-1);
             if (shipFile.startsWith("999999-99999-")) {
                 files.remove(files.size()-1);
                 for (int i=0; i<numSplits; i++) {
-                    files.add(shipFile + "-" + i + "-" + numSplits);
+                    files.add(shipFile + "=" + i + "=" + numSplits);
                 }
             }
         }
