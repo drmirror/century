@@ -47,17 +47,17 @@ if step in (0, 1, 2):
         plt.annotate(str(temp), (x[i] + .1, y[i] + .1))
 
 # Show triangulation.
-if step in (1, 2):
+if step in (1, 2, 3):
     triangulation = tri.Triangulation(x, y)
     plt.triplot(triangulation, 'bo-')
 
 
 # Show grid.
-if step in (2, 3, 4, 5):
+if step in (2, 3, 4, 5, 6):
     plt.grid(True, linestyle='-')
 
 # Show interpolated temperatures.
-if step in (3, 4, 5):
+if step in (3, 4, 5, 6):
     for colnum, col in enumerate(zi):
         for rownum, temp in enumerate(col):
             if not math.isnan(temp):
@@ -65,13 +65,13 @@ if step in (3, 4, 5):
                 plt.annotate('%.1f' % temp, (xi[rownum] + .1, yi[colnum] + .1))
 
 # Contour lines.
-if step in (4, 5):
+if step in (5, 6):
     plt.contour(xi, yi, zi, 15,
                 linewidths=0.5, colors='k', alpha=0.25)
 
 
 # Contour colors.
-if step == 5:
+if step == 6:
     plt.contourf(xi, yi, zi, 15, cmap=plt.cm.RdBu_r)
 
 
