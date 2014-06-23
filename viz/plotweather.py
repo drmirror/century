@@ -236,10 +236,11 @@ def loop(options, monary_connection, m, dt, n_hours):
                               method='linear')
 
             with timer('plot'):
-                CS1 = plt.contour(xi, yi, zi, 15,
+                levels = np.linspace(-50, 40, 30)
+                CS1 = plt.contour(xi, yi, zi, levels,
                                   linewidths=0.5, colors='k', alpha=0.25)
 
-                CS2 = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.RdBu_r)
+                CS2 = plt.contourf(xi, yi, zi, levels, cmap=plt.cm.RdBu_r)
 
                 # Plot weather stations' locations as small blue dots.
                 m.plot(x, y, 'b.', alpha=0.25)
