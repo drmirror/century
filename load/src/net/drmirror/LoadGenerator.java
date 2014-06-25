@@ -113,6 +113,7 @@ public class LoadGenerator extends Thread {
     private Object statLock = new Object();
     
     private TreeMultiset<Long> nanos = TreeMultiset.create();
+    private long sumDocs = 0;
     private long sumNanos = 0;
     private int numNanos = 0;
     private long minNanos = Long.MAX_VALUE;
@@ -219,7 +220,10 @@ public class LoadGenerator extends Thread {
                     break;
         case HOUR:  break;
         case FUZZ:  calendar.add(Calendar.SECOND, -FUZZ_SECONDS); break;
-        case POINT: break;
+        case POINT: int hour = calendar.get(Calendar.HOUR_OF_DAY);
+                    hour = (hour / 3) * 3;
+                    calendar.set(Calendar.HOUR_OF_DAY,hour);
+                    break;
         }
         result.min = calendar.getTime();
 
@@ -277,7 +281,12 @@ public class LoadGenerator extends Thread {
     
     private DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     
-    private long query() {
+    private static class QueryResult {
+        long nanos;
+        int documents;
+    }
+    
+    private QueryResult query() {
         Range<Date> tsRange = getTsRange();
         Range<String> stRange = getStRange(tsRange.min, tsRange.max);
 
@@ -308,30 +317,34 @@ public class LoadGenerator extends Thread {
 
         if (showQueries) System.out.println("  " + c.length());
         
-        return endTime - startTime;
+        QueryResult r = new QueryResult();
+        r.nanos = endTime - startTime;
+        r.documents = x.size();
+        return r;
     }
     
-    private void updateStats (long nano) {
+    private void updateStats (QueryResult r) {
         synchronized (statLock) {
-            nanos.add(nano);
-            sumNanos += nano;
+            nanos.add(r.nanos);
+            sumDocs += r.documents;
+            sumNanos += r.nanos;
             numNanos += 1;
-            if (nano < minNanos) minNanos = nano;
-            if (nano > maxNanos) maxNanos = nano;
+            if (r.nanos < minNanos) minNanos = r.nanos;
+            if (r.nanos > maxNanos) maxNanos = r.nanos;
             if (emaNanos == -1)
-                emaNanos = nano;
+                emaNanos = r.nanos;
             else
-                emaNanos = (long)(emaFactor * (double)emaNanos + (1.0-emaFactor) * (double)nano);
+                emaNanos = (long)(emaFactor * (double)emaNanos + (1.0-emaFactor) * (double)r.nanos);
         }
     }
     
     private void printStatsHeader() {
-         System.out.println("\n     n      avg      ema      min      max     95th     99th");   
+         System.out.println("\n     n      avg      ema      min      max     95th     99th        doc");   
     }
     
     private void printStats() {
         long n;
-        double avg, ema, min, max, p95, p99;
+        double avg, ema, min, max, p95, p99, doc;
         synchronized (statLock) {
             n   = numNanos;
             avg = ((double)sumNanos / (double)numNanos) / NANOS_PER_MILLI;
@@ -341,10 +354,11 @@ public class LoadGenerator extends Thread {
             Pair p = getPercentiles (95, 99);
             p95 = p.a / NANOS_PER_MILLI;
             p99 = p.b / NANOS_PER_MILLI;
+            doc = (double)sumDocs / (double)numNanos;
         }
         
-        System.out.printf("%6d %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", 
-                          n, avg, ema, min, max, p95, p99);    
+        System.out.printf("%6d %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %10.3f\n", 
+                          n, avg, ema, min, max, p95, p99, doc);    
     }
     
     private static class Pair {
