@@ -7,6 +7,13 @@ import java.util.Map;
 
 import com.mongodb.BasicDBObject;
 
+/**
+ * A parser for the optional part of a weather record, which
+ * consists of various sections, or blocks, introduced by a
+ * marker header. 
+ *
+ * @author: Andre Spiegel <andre.spiegel@mongodb.com>
+ */
 public abstract class Parser {
 
     public abstract void parse (String data, int index, BasicDBObject d);
