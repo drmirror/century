@@ -27,6 +27,13 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 
+/**
+ * An application that runs various kinds of queries against
+ * the weather database and gathers statistics about their
+ * latency.
+ * 
+ * @author Andre Spiegel <andre.spiegel@mongodb.com>
+ */
 public class LoadGenerator extends Thread {
 
     public static enum StationInterval {
