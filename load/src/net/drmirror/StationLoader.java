@@ -14,6 +14,13 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 
+/**
+ * Loads a table of static weather station records that
+ * can be used to find a station's name or the time
+ * interval in which it has been reporting.
+ * 
+ * @author Andre Spiegel <andre.spiegel@mongodb.com>
+ */
 public class StationLoader {
 
     public static BasicDBObject decodeStation(String line) {
