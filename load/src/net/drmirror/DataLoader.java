@@ -28,8 +28,30 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 
+/**
+ * An application to bulk-load the weather data into MongoDB.  The data
+ * is supposed to be in raw text form in a directory tree under
+ * /data/raw/YYYY where YYYY is the year. Files may or may not be
+ * compressed and will be automatically decompressed upon reading.
+ * 
+ * The loading uses a configurable number of worker threads, where
+ * one thread reads, parses, and loads all the records in a single
+ * data file, then moves on to the next data file.
+ * 
+ * A special consideration is the file that contains the data from
+ * ships.  This file is about a hundred times larger than the other
+ * files, so multiple worker threads read that file simultaneously
+ * so that we don't lose too much parallelism on it.
+ * 
+ * @author: Andre Spiegel <andre.spiegel@mongodb.com>
+ */
 public class DataLoader {
 
+    /**
+     * This parses and converts the static part of a weather record.
+     * The optional parts are handled by the separate Parser class
+     * that is used by this one.
+     */
     private static class RecordParser {
 
         // had to encapsulate this because SimpleDateFormat is not thread-safe 
@@ -291,7 +313,7 @@ public class DataLoader {
         }
         
         private void splitShips (int numThreads) {
-            int numSplits = Math.min(numThreads, 16);
+            int numSplits = Math.min(numThreads, 32);
             String shipFile = files.get(files.size()-1);
             if (shipFile.startsWith("999999-99999-")) {
                 files.remove(files.size()-1);
