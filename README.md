@@ -3,41 +3,14 @@ century
 
 This is a project to store a century's worth of weather data in MongoDB and show what you can do with it.
 
-Loading data
-============
+The various parts are organized in subdirectories and here's what they contain:
 
-US states
----------
+* **load** contains Java programs to bulk-load the raw data into MongoDB and perform various kinds of queries on it
 
-Install the ogr2ogr tool, a [Mac OS X build is available here][1].
+* **load-us-states** is a script that loads US State geometry into a separate collection
 
-[1]: http://www.kyngchaos.com/files/software/frameworks/GDAL_Complete-1.11.dmg
+* **web** contains the "birthday app", which allows you to query the database for a given point in space-time and display the results in Google Earth
 
-Run `load-us-states/load-us-states.py` to insert US State geometry into the
-`ncdc.states` collection.
-The script assumes a mongod is running on port 5000.
+* **viz** contains programs to create a global temperature visualization based on the data
 
-TODO: other loading instructions
---------------------------------
-
-Indexes
--------
-
-Once the data is loaded, create the index required by the web application:
-
-    db.data.createIndex({ts: 1});
-
-On Jesse's laptop, building the index takes about 1 minute per million
-documents. The year 1978, for example, has about 30 million documents, so
-if only the year 1978 is loaded, then building the index takes about 30
-minutes.
-
-Schema description
-==================
-
-TODO.
-
-Running the web app
-===================
-
-See `web/INSTALL.md`.
+* **scripts**, **queries**: various bits and pieces
